@@ -308,7 +308,7 @@ ${context}
 Write a short, professional, 2-sentence situational summary of the overall venue state, and follow it with a 1-sentence prioritized tactical recommendation for the supervisor viewing this dashboard. Do not use markdown bolding in your response.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: prompt,
     });
     
