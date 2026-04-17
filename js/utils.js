@@ -6,11 +6,14 @@
 /* ── Toast System ──────────────────────────────────────────── */
 function showToast(title, body, type = 'info', duration = 4500) {
   const container = document.getElementById('toast-container');
-  if (!container) return;
+  if (!container) {return;}
 
   const icons = { info:'ℹ️', success:'✅', warning:'⚠️', danger:'🚨' };
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
+  toast.setAttribute('role', 'alert');
+  toast.setAttribute('aria-live', 'assertive');
+  toast.setAttribute('aria-atomic', 'true');
   toast.innerHTML = `
     <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
     <div>
@@ -28,7 +31,7 @@ function showToast(title, body, type = 'info', duration = 4500) {
 /* ── Tab Switcher ──────────────────────────────────────────── */
 function initTabs(barId, pagePrefix) {
   const bar = document.getElementById(barId);
-  if (!bar) return;
+  if (!bar) {return;}
   bar.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       bar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -180,13 +183,13 @@ function drawSparkline(canvas, values, color = '#2979ff') {
 
 /* ── Colour helpers ────────────────────────────────────────── */
 function getStatusColor(val, threshold) {
-  if (val >= threshold * 1.15) return 'rgb(255,23,68)';
-  if (val >= threshold)         return 'rgb(255,171,0)';
+  if (val >= threshold * 1.15) {return 'rgb(255,23,68)';}
+  if (val >= threshold)         {return 'rgb(255,171,0)';}
   return 'rgb(41,121,255)';
 }
 function getStatusColorByPct(pct) {
-  if (pct >= 96) return '#ff1744';
-  if (pct >= 85) return '#ffab00';
+  if (pct >= 96) {return '#ff1744';}
+  if (pct >= 85) {return '#ffab00';}
   return '#2979ff';
 }
 function lighten(hex) {
@@ -195,10 +198,10 @@ function lighten(hex) {
 
 /* ── Relative time ─────────────────────────────────────────── */
 function relTime(d) {
-  if (!d) return '—';
+  if (!d) {return '—';}
   const diff = Math.floor((new Date() - new Date(d)) / 60000);
-  if (diff < 1)  return 'just now';
-  if (diff < 60) return `${diff}m ago`;
+  if (diff < 1)  {return 'just now';}
+  if (diff < 60) {return `${diff}m ago`;}
   return `${Math.floor(diff/60)}h ${diff % 60}m ago`;
 }
 
@@ -234,8 +237,8 @@ function formatCurrency(amount) {
 
 /* ── Occupancy fill class ──────────────────────────────────── */
 function occupancyClass(pct) {
-  if (pct >= 96) return 'progress-critical';
-  if (pct >= 85) return 'progress-alert';
+  if (pct >= 96) {return 'progress-critical';}
+  if (pct >= 85) {return 'progress-alert';}
   return 'progress-normal';
 }
 

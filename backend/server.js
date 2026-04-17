@@ -1,3 +1,5 @@
+require('dotenv').config({ path: '../.env' });
+
 /* ================================================================
    SMART VENUE EXPERIENCE — Main Express + WebSocket Server
    PORT 3000  |  ws://localhost:3000
@@ -8,6 +10,9 @@ const http       = require('http');
 const WebSocket  = require('ws');
 const cors       = require('cors');
 const path       = require('path');
+const helmet     = require('helmet');
+const compression = require('compression');
+const rateLimit  = require('express-rate-limit');
 
 const store      = require('./store');
 const wf         = require('./workflows');
@@ -16,13 +21,28 @@ const { router: apiRouter, init: initRoutes } = require('./routes');
 
 const PORT = process.env.PORT || 3000;
 
-/* ── Express setup ─────────────────────────────────────────── */
+/* ── Express setup & Security Middleware ───────────────────────── */
 const app = express();
+
+// Security: HTTP Header protection (CSP disabled for our inline canvas/scripts)
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Efficiency: Gzip/Brotli payload compression
+app.use(compression());
+
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-/* Serve the entire Smart Venue Experience folder as static files */
-app.use(express.static(path.join(__dirname, '..')));
+// Security: API Rate Limiting against DDoS (300 req per 5 minutes)
+const apiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 300,
+  message: { error: 'Too many requests, please try again later.' }
+});
+app.use('/api', apiLimiter);
+
+/* Serve the entire Smart Venue Experience folder as static files (with Caching) */
+app.use(express.static(path.join(__dirname, '..'), { maxAge: '1h' }));
 
 /* API routes under /api */
 app.use('/api', apiRouter);
@@ -76,7 +96,7 @@ wss.on('connection', (ws, req) => {
   ws.on('message', raw => {
     try {
       const msg = JSON.parse(raw);
-      if (msg.type === 'ping') safeSend(ws, { event: 'pong', ts: new Date() });
+      if (msg.type === 'ping') {safeSend(ws, { event: 'pong', ts: new Date() });}
     } catch (_) {}
   });
 });
@@ -85,13 +105,13 @@ wss.on('connection', (ws, req) => {
 function broadcast(payload) {
   const json = JSON.stringify(payload);
   clients.forEach(ws => {
-    if (ws.readyState === WebSocket.OPEN) ws.send(json);
+    if (ws.readyState === WebSocket.OPEN) {ws.send(json);}
   });
 }
 
 function safeSend(ws, payload) {
   try {
-    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+    if (ws.readyState === WebSocket.OPEN) {ws.send(JSON.stringify(payload));}
   } catch (e) {
     console.error('[WS] safeSend error:', e.message);
   }

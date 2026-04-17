@@ -8,7 +8,7 @@ const WorkflowEngine = (() => {
   /* ── Workflow 1: Crowd Surge Alert ─────────────────────────── */
   function triggerId1(zone) {
     const pct = VenueDB.occupancyPct(zone);
-    if (pct < 85) return;
+    if (pct < 85) {return;}
 
     const isCritical = zone.status === 'critical';
     const level = isCritical ? 'CRITICAL' : 'ALERT';
@@ -41,7 +41,7 @@ const WorkflowEngine = (() => {
 
   /* ── Workflow 2: Queue Threshold Notification ──────────────── */
   function triggerId2(queue) {
-    if (queue.estimated_wait_min >= 5) return;
+    if (queue.estimated_wait_min >= 5) {return;}
 
     const facilityEmojis = { food:'🍔', restroom:'🚻', merch:'👕' };
     const emoji = facilityEmojis[queue.facility_type] || '📍';
@@ -60,12 +60,12 @@ const WorkflowEngine = (() => {
 
   /* ── Workflow 3: Incident Escalation ───────────────────────── */
   function triggerId3(incident) {
-    if (incident.assigned_staff_id) return;
+    if (incident.assigned_staff_id) {return;}
 
     /* Auto-assign nearest available staff */
     setTimeout(() => {
       const openInc = VenueDB.incidents.find(i=>i.incident_id===incident.incident_id);
-      if (!openInc || openInc.status !== 'open' || openInc.assigned_staff_id) return;
+      if (!openInc || openInc.status !== 'open' || openInc.assigned_staff_id) {return;}
 
       const available = VenueDB.staff
         .filter(s => s.availability_status === 'available' && s.assigned_zone === openInc.zone_id);
@@ -83,7 +83,7 @@ const WorkflowEngine = (() => {
         /* Escalate to supervisor if unacknowledged for 5 min */
         setTimeout(() => {
           const inc = VenueDB.incidents.find(i=>i.incident_id===openInc.incident_id);
-          if (!inc || inc.status === 'resolved' || inc.escalated) return;
+          if (!inc || inc.status === 'resolved' || inc.escalated) {return;}
           inc.escalated = true;
           const supervisor = VenueDB.staff.find(s=>s.role==='Zone Supervisor'&&s.assigned_zone===inc.zone_id);
           const msg = supervisor
@@ -100,7 +100,7 @@ const WorkflowEngine = (() => {
   /* ── Workflow 4: Order Delivery Routing ────────────────────── */
   function triggerId4(order) {
     const attendee = VenueDB.attendees.find(a=>a.attendee_id===order.attendee_id);
-    if (!attendee) return;
+    if (!attendee) {return;}
 
     /* Find nearest available delivery staff */
     const runners = VenueDB.staff.filter(
@@ -128,7 +128,7 @@ const WorkflowEngine = (() => {
     const zones = VenueDB.zones;
     zones.forEach(zone => {
       const zoneGates = VenueDB.getZoneGates(zone.zone_id).filter(g=>g.is_open&&g.gate_type==='entry');
-      if (zoneGates.length < 2) return;
+      if (zoneGates.length < 2) {return;}
 
       const avgQueue = zoneGates.reduce((s,g)=>s+g.queue_length,0) / zoneGates.length;
       const overloaded = zoneGates.filter(g=>g.queue_length > avgQueue*1.4);
@@ -136,7 +136,7 @@ const WorkflowEngine = (() => {
 
       overloaded.forEach(og => {
         const alt = underloaded[0];
-        if (!alt) return;
+        if (!alt) {return;}
         const msg = `Gate ${og.gate_id} is busy (${og.queue_length} in queue). Switch to Gate ${alt.gate_id} — only ${alt.queue_length} in line!`;
         VenueDB.addNotification('info', '🚦 Faster Entry Available', msg);
         showWorkflowToast('WF5 — Gate Reroute', `${zone.zone_name}: ${og.gate_id} → ${alt.gate_id}`, 'info');
@@ -149,7 +149,7 @@ const WorkflowEngine = (() => {
   function checkEscalations() {
     const now = new Date();
     VenueDB.incidents.forEach(inc => {
-      if (inc.status === 'resolved' || inc.escalated) return;
+      if (inc.status === 'resolved' || inc.escalated) {return;}
       const age = (now - inc.timestamp) / 60000; // minutes
       if (age > 8 && !inc.escalated) {
         inc.escalated = true;
@@ -168,13 +168,13 @@ const WorkflowEngine = (() => {
     // Also fire if any gate is heavily loaded
     VenueDB.on('tick', () => {
       const heavy = VenueDB.gates.find(g=>g.queue_length>120);
-      if (heavy) triggerId5();
+      if (heavy) {triggerId5();}
     });
   }
 
   /* ── Toast helper ──────────────────────────────────────────── */
   function showWorkflowToast(title, body, type='info') {
-    if (typeof showToast === 'function') showToast(title, body, type);
+    if (typeof showToast === 'function') {showToast(title, body, type);}
   }
 
   return {

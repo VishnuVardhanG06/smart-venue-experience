@@ -75,11 +75,11 @@ function tick() {
 function progressOrders() {
   const progression = { placed: 'preparing', preparing: 'ready', ready: 'delivered' };
   store.orders.forEach(order => {
-    if (!progression[order.status]) return;
+    if (!progression[order.status]) {return;}
     if (Math.random() > 0.65) {
       order.status = progression[order.status];
       broadcast({ event: 'order:update', data: order });
-      if (order.status === 'ready') wf.wf4OrderRouting(order);
+      if (order.status === 'ready') {wf.wf4OrderRouting(order);}
       console.log(`[IoT] Order ${order.order_id} progressed → ${order.status}`);
     }
   });
@@ -95,7 +95,7 @@ function handleWebhook(payload) {
       zone.current_occupancy = payload.current_occupancy;
       zone.status = store.computeZoneStatus(zone);
       zone.last_updated = new Date();
-      if (prevStatus !== zone.status) wf.wf1CrowdSurge(zone);
+      if (prevStatus !== zone.status) {wf.wf1CrowdSurge(zone);}
       broadcast({ event: 'tick', data: { zones: store.zones, gates: store.gates, queues: store.queues, kpis: store.getKPIs(), ts: new Date() } });
       return { updated: 'zone', zone_id: payload.zone_id };
     }

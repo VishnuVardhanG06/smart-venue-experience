@@ -21,7 +21,7 @@
       const timeout = setTimeout(() => ctrl.abort(), 2500);
       const resp = await fetch(`${BASE}/api/health`, { signal: ctrl.signal });
       clearTimeout(timeout);
-      if (!resp.ok) throw new Error('Server unhealthy');
+      if (!resp.ok) {throw new Error('Server unhealthy');}
 
       connected = true;
       console.log('[API] Backend reachable ✅ — switching to server-driven mode');
@@ -71,9 +71,9 @@
 
         /* IoT tick — update zones, gates, queues in-place */
         case 'tick':
-          if (data.zones)  mergeArray(VenueDB.zones,  data.zones,  'zone_id');
-          if (data.gates)  mergeArray(VenueDB.gates,  data.gates,  'gate_id');
-          if (data.queues) mergeArray(VenueDB.queues, data.queues, 'queue_id');
+          if (data.zones)  {mergeArray(VenueDB.zones,  data.zones,  'zone_id');}
+          if (data.gates)  {mergeArray(VenueDB.gates,  data.gates,  'gate_id');}
+          if (data.queues) {mergeArray(VenueDB.queues, data.queues, 'queue_id');}
           VenueDB.emit('tick', { zones: VenueDB.zones, gates: VenueDB.gates, queues: VenueDB.queues });
           break;
 
@@ -151,17 +151,17 @@
 
   /* ── Apply full snapshot from server ─────────────────────── */
   function applySnapshot(data) {
-    if (data.zones)         mergeArray(VenueDB.zones,         data.zones,         'zone_id');
-    if (data.gates)         mergeArray(VenueDB.gates,         data.gates,         'gate_id');
-    if (data.queues)        mergeArray(VenueDB.queues,        data.queues,        'queue_id');
-    if (data.staff)         mergeArray(VenueDB.staff,         data.staff,         'staff_id');
-    if (data.incidents)     mergeArray(VenueDB.incidents,     data.incidents,     'incident_id');
-    if (data.attendees)     mergeArray(VenueDB.attendees,     data.attendees,     'attendee_id');
-    if (data.orders)        mergeArray(VenueDB.orders,        data.orders,        'order_id');
-    if (data.notifications) mergeArray(VenueDB.notifications, data.notifications, 'id');
-    if (data.messages)      mergeArray(VenueDB.messages,      data.messages,      'msg_id');
-    if (data.menuItems)     mergeArray(VenueDB.menuItems,     data.menuItems,     'item_id');
-    if (data.lostFound)     mergeArray(VenueDB.lostFound,     data.lostFound,     'lf_id');
+    if (data.zones)         {mergeArray(VenueDB.zones,         data.zones,         'zone_id');}
+    if (data.gates)         {mergeArray(VenueDB.gates,         data.gates,         'gate_id');}
+    if (data.queues)        {mergeArray(VenueDB.queues,        data.queues,        'queue_id');}
+    if (data.staff)         {mergeArray(VenueDB.staff,         data.staff,         'staff_id');}
+    if (data.incidents)     {mergeArray(VenueDB.incidents,     data.incidents,     'incident_id');}
+    if (data.attendees)     {mergeArray(VenueDB.attendees,     data.attendees,     'attendee_id');}
+    if (data.orders)        {mergeArray(VenueDB.orders,        data.orders,        'order_id');}
+    if (data.notifications) {mergeArray(VenueDB.notifications, data.notifications, 'id');}
+    if (data.messages)      {mergeArray(VenueDB.messages,      data.messages,      'msg_id');}
+    if (data.menuItems)     {mergeArray(VenueDB.menuItems,     data.menuItems,     'item_id');}
+    if (data.lostFound)     {mergeArray(VenueDB.lostFound,     data.lostFound,     'lf_id');}
 
     console.log('[API] Snapshot applied — all 7 tables synced from server');
     VenueDB.emit('snapshot', data);
@@ -186,7 +186,7 @@
     /* addIncident → POST /api/incidents (+ fallback to local) */
     const _addIncident = VenueDB.addIncident.bind(VenueDB);
     VenueDB.addIncident = async function(type, zone_id, reported_by) {
-      if (!connected) return _addIncident(type, zone_id, reported_by);
+      if (!connected) {return _addIncident(type, zone_id, reported_by);}
       try {
         const resp = await fetch(`${BASE}/api/incidents`, {
           method: 'POST',
@@ -205,7 +205,7 @@
     /* addOrder → POST /api/orders */
     const _addOrder = VenueDB.addOrder.bind(VenueDB);
     VenueDB.addOrder = async function(attendee_id, items) {
-      if (!connected) return _addOrder(attendee_id, items);
+      if (!connected) {return _addOrder(attendee_id, items);}
       try {
         const att = VenueDB.attendees.find(a => a.attendee_id === attendee_id);
         const resp = await fetch(`${BASE}/api/orders`, {
@@ -217,7 +217,7 @@
         if (!VenueDB.orders.find(o => o.order_id === ord.order_id)) {
           VenueDB.orders.unshift(ord);
         }
-        if (att) att.order_id = ord.order_id;
+        if (att) {att.order_id = ord.order_id;}
         VenueDB.emit('order:new', ord);
         return ord;
       } catch { return _addOrder(attendee_id, items); }
@@ -226,7 +226,7 @@
     /* addMessage → POST /api/messages */
     const _addMessage = VenueDB.addMessage.bind(VenueDB);
     VenueDB.addMessage = async function(from_staff, to_zone, body) {
-      if (!connected) return _addMessage(from_staff, to_zone, body);
+      if (!connected) {return _addMessage(from_staff, to_zone, body);}
       try {
         const resp = await fetch(`${BASE}/api/messages`, {
           method: 'POST',
@@ -245,7 +245,7 @@
     /* updateQueue → PATCH /api/queues/:id */
     const _updateQueue = VenueDB.updateQueue.bind(VenueDB);
     VenueDB.updateQueue = async function(qid, length) {
-      if (!connected) return _updateQueue(qid, length);
+      if (!connected) {return _updateQueue(qid, length);}
       try {
         const resp = await fetch(`${BASE}/api/queues/${qid}`, {
           method: 'PATCH',
@@ -262,7 +262,7 @@
     /* resolveIncident → PATCH /api/incidents/:id */
     const _resolveIncident = VenueDB.resolveIncident.bind(VenueDB);
     VenueDB.resolveIncident = async function(id) {
-      if (!connected) return _resolveIncident(id);
+      if (!connected) {return _resolveIncident(id);}
       try {
         const resp = await fetch(`${BASE}/api/incidents/${id}`, {
           method: 'PATCH',
@@ -279,7 +279,7 @@
     /* addNotification → POST /api/notifications */
     const _addNotification = VenueDB.addNotification.bind(VenueDB);
     VenueDB.addNotification = async function(type, title, body) {
-      if (!connected) return _addNotification(type, title, body);
+      if (!connected) {return _addNotification(type, title, body);}
       try {
         const resp = await fetch(`${BASE}/api/notifications`, {
           method: 'POST',

@@ -135,8 +135,8 @@ const VenueDB = (() => {
   }
   function computeZoneStatus(zone) {
     const pct = zone.current_occupancy / zone.capacity;
-    if (pct >= 0.96) return 'critical';
-    if (pct >= 0.85) return 'alert';
+    if (pct >= 0.96) {return 'critical';}
+    if (pct >= 0.85) {return 'alert';}
     return 'normal';
   }
   function computeGateWait(ql) { return Math.max(0, Math.round(ql * 0.12)); }
@@ -187,7 +187,7 @@ const VenueDB = (() => {
           if (Math.random() > 0.65) {
             o.status = progression[o.status];
             emit('order:update', o);
-            if (o.status === 'ready') WorkflowEngine.triggerId4(o);
+            if (o.status === 'ready') {WorkflowEngine.triggerId4(o);}
           }
         }
       });
@@ -246,7 +246,7 @@ const VenueDB = (() => {
         timestamp: new Date(), total
       };
       orders.unshift(ord);
-      if (att) att.order_id = ord.order_id;
+      if (att) {att.order_id = ord.order_id;}
       emit('order:new', ord);
       return ord;
     },
@@ -265,6 +265,6 @@ const VenueDB = (() => {
       if (q) { q.current_length=length; q.estimated_wait_min=Math.max(0,Math.round(length*0.4)); q.last_updated=new Date(); emit('queue:update',q); }
     },
     occupancyPct: z => Math.round((z.current_occupancy / z.capacity) * 100),
-    formatTime: d => { if(!d) return '—'; const now=new Date(); const diff=Math.floor((now-d)/60000); if(diff<1) return 'just now'; if(diff<60) return `${diff}m ago`; return `${Math.floor(diff/60)}h ${diff%60}m ago`; }
+    formatTime: d => { if(!d) {return '—';} const now=new Date(); const diff=Math.floor((now-d)/60000); if(diff<1) {return 'just now';} if(diff<60) {return `${diff}m ago`;} return `${Math.floor(diff/60)}h ${diff%60}m ago`; }
   };
 })();

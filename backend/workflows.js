@@ -14,7 +14,7 @@ function init(broadcastFn) {
 /* ── WF1: Crowd Surge Alert ────────────────────────────────── */
 function wf1CrowdSurge(zone) {
   const pct = Math.round((zone.current_occupancy / zone.capacity) * 100);
-  if (pct < 85) return;
+  if (pct < 85) {return;}
 
   const level    = zone.status === 'critical' ? 'CRITICAL' : 'ALERT';
   const emoji    = zone.status === 'critical' ? '🚨' : '⚠️';
@@ -44,7 +44,7 @@ function wf1CrowdSurge(zone) {
 
 /* ── WF2: Queue Threshold Notification ────────────────────── */
 function wf2QueueAlert(queue) {
-  if (queue.estimated_wait_min >= 5) return;
+  if (queue.estimated_wait_min >= 5) {return;}
   const emojiMap = { food: '🍔', restroom: '🚻', merch: '👕' };
   const emoji = emojiMap[queue.facility_type] || '📍';
   const body = `${queue.location_name} is nearly empty — only ~${queue.estimated_wait_min} min wait!`;
@@ -55,12 +55,12 @@ function wf2QueueAlert(queue) {
 
 /* ── WF3: Incident Escalation ──────────────────────────────── */
 function wf3IncidentEscalation(incident) {
-  if (incident.assigned_staff_id) return;
+  if (incident.assigned_staff_id) {return;}
 
   // Auto-assign in 3s (demo; production: 3 min)
   setTimeout(() => {
     const inc = store.incidents.find(i => i.incident_id === incident.incident_id);
-    if (!inc || inc.status !== 'open' || inc.assigned_staff_id) return;
+    if (!inc || inc.status !== 'open' || inc.assigned_staff_id) {return;}
 
     const zoneStaff = store.staff.filter(s => s.assigned_zone === inc.zone_id && s.availability_status === 'available');
     const anyStaff  = store.staff.filter(s => s.availability_status === 'available');
@@ -78,7 +78,7 @@ function wf3IncidentEscalation(incident) {
       // Escalate after 8s (demo; production: 5 min) if unresolved
       setTimeout(() => {
         const current = store.incidents.find(i => i.incident_id === inc.incident_id);
-        if (!current || current.status === 'resolved' || current.escalated) return;
+        if (!current || current.status === 'resolved' || current.escalated) {return;}
         current.escalated = true;
         const supervisor = store.staff.find(s => s.role === 'Zone Supervisor' && s.assigned_zone === current.zone_id);
         const msg = supervisor
@@ -95,9 +95,9 @@ function wf3IncidentEscalation(incident) {
 
 /* ── WF4: Order Delivery Routing ───────────────────────────── */
 function wf4OrderRouting(order) {
-  if (order.status !== 'ready') return;
+  if (order.status !== 'ready') {return;}
   const attendee = store.attendees.find(a => a.attendee_id === order.attendee_id);
-  if (!attendee) return;
+  if (!attendee) {return;}
 
   const runners = store.staff.filter(s =>
     s.role === 'Delivery Runner' &&
@@ -121,14 +121,14 @@ function wf4OrderRouting(order) {
 function wf5GateBalancing() {
   store.zones.forEach(zone => {
     const zoneGates = store.gates.filter(g => g.zone_id === zone.zone_id && g.is_open && g.gate_type === 'entry');
-    if (zoneGates.length < 2) return;
+    if (zoneGates.length < 2) {return;}
     const avgQ = zoneGates.reduce((s, g) => s + g.queue_length, 0) / zoneGates.length;
     const overloaded = zoneGates.filter(g => g.queue_length > avgQ * 1.4);
     const underloaded = zoneGates.filter(g => g.queue_length < avgQ * 0.6).sort((a,b) => a.queue_length - b.queue_length);
 
     overloaded.forEach(og => {
       const alt = underloaded[0];
-      if (!alt) return;
+      if (!alt) {return;}
       const msg = `Gate ${og.gate_id} busy (${og.queue_length} queued). Switch to Gate ${alt.gate_id} — only ${alt.queue_length} in line!`;
       const notif = pushNotification('info', '🚦 Faster Entry Available', msg);
       broadcast({ event: 'notification:new', data: notif });
@@ -141,7 +141,7 @@ function wf5GateBalancing() {
 function checkEscalations() {
   const now = new Date();
   store.incidents.forEach(inc => {
-    if (inc.status === 'resolved' || inc.escalated) return;
+    if (inc.status === 'resolved' || inc.escalated) {return;}
     const ageMin = (now - new Date(inc.timestamp)) / 60000;
     if (ageMin > 8) {
       inc.escalated = true;
@@ -159,7 +159,7 @@ function checkEscalations() {
 function pushNotification(type, title, body) {
   const notif = { id: `N${Date.now()}`, type, title, body, time: new Date(), read: false };
   store.notifications.unshift(notif);
-  if (store.notifications.length > 100) store.notifications.pop(); // cap at 100
+  if (store.notifications.length > 100) {store.notifications.pop();} // cap at 100
   return notif;
 }
 

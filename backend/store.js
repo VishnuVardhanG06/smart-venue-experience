@@ -129,8 +129,8 @@ const lostFound = [
 /* ── Helpers ───────────────────────────────────────────────── */
 function computeZoneStatus(zone) {
   const pct = zone.current_occupancy / zone.capacity;
-  if (pct >= 0.96) return 'critical';
-  if (pct >= 0.85) return 'alert';
+  if (pct >= 0.96) {return 'critical';}
+  if (pct >= 0.85) {return 'alert';}
   return 'normal';
 }
 

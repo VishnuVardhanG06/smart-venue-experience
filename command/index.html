@@ -267,8 +267,10 @@
                 <option value="in-progress">In Progress</option>
                 <option value="resolved">Resolved</option>
               </select>
+              <button class="btn btn-primary btn-sm" id="btn-ai-analysis" onclick="runAIAnalysis()">✨ AI Summary</button>
             </div>
           </div>
+          <div id="ai-analysis-result" style="display: none; padding: 1rem; border-bottom: 1px solid var(--neon-cyan); background: rgba(0,229,255,0.1); line-height: 1.4; color: #fff; font-size: 0.85rem;"></div>
           <div id="cmd-incidents"></div>
         </div>
       </section>
@@ -473,6 +475,33 @@
     renderAllIncidents();
     updateKPIs();
     showToast('✅ Resolved',`Incident ${id} marked as resolved`,'success');
+  }
+
+  /* ── AI Analysis ── */
+  async function runAIAnalysis() {
+    const btn = document.getElementById('btn-ai-analysis');
+    const resultBox = document.getElementById('ai-analysis-result');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Analyzing...';
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = '<span class="alert-dot warning"></span> Waiting for Gemini AI...';
+
+    try {
+      const BASE = typeof VenueDB !== 'undefined' && VenueDB.getServerBase ? VenueDB.getServerBase() : 'http://localhost:3000';
+      const res = await fetch(`${BASE}/api/ai/incident-analysis`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      resultBox.innerHTML = `<strong>🤖 Gemini Analysis:</strong> <br/>${data.summary.replace(/\\n/g,'<br/>')}`;
+      resultBox.style.background = 'rgba(0,229,255,0.1)';
+      resultBox.style.borderBottom = '1px solid var(--accent-cyan)';
+    } catch (err) {
+      resultBox.innerHTML = `<strong>⚠️ AI Error:</strong> ${err.message}`;
+      resultBox.style.background = 'rgba(255,23,68,0.15)';
+      resultBox.style.borderBottom = '1px solid var(--accent-red)';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '✨ AI Summary';
+    }
   }
 
   /* ── Staff matrix ── */
