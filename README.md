@@ -32,17 +32,22 @@ The backend runs continuous listeners that trigger automation events without hum
 - **Order Routing:** Triggers a dispatcher when food prep finishes, marking a runner as "busy".
 - **Gate Balancing:** Suggests alternative, faster entry gates to attendees if their current line exceeds expected loads.
 
-### 🎨 Custom "Neon-Dark" Design System
-Built from scratch in Vanilla CSS without Tailwind or Bootstrap. Features heavy use of CSS variables, glassmorphism (`backdrop-filter: blur()`), glowing borders, and pure HTML5 `<canvas>`-based data visualization charts (no chart.js or other external library dependencies).
+### ✨ AI Incident summarization
+The Command Center integrates directly with the **Google Gemini API** (`gemini-2.5-flash`). Venue directors can click "AI Summary" to have the LLM evaluate all open/critical incidents in the venue and formulate a 1-sentence tactical action plan.
+
+### 🛡️ Production Readiness & Security
+The REST API is hardened with **Helmet** (HTTP header shielding), **express-rate-limit** (DDoS mitigation), and **compression** (Gzip Brotli payloads). Codebase quality is maintained via a strict **ESLint** flat-config, and automated testing is handled via **Jest** and **Supertest** covering workflow automation routing.
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Frontend:** Vanilla HTML5, CSS3, JavaScript (0 dependencies)
-- **Backend:** Node.js, Express (API routes + Static file hosting)
+- **Backend:** Node.js, Express
 - **Real-time:** `ws` (native WebSockets instance)
-- **Testing/Data:** Mocked in-memory store simulating 7 parallel tables (Zones, Gates, Queues, Staff, Incidents, Attendees, Orders)
+- **AI Integration:** `@google/genai` (Gemini 2.5 Flash)
+- **Testing & Tooling:** Jest, Supertest, ESLint, Prettier
+- **Security:** Helmet, express-rate-limit, compression, dotenv
 
 ---
 
