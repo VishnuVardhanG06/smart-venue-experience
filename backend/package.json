@@ -1,0 +1,16 @@
+{
+  "name": "smart-venue-backend",
+  "version": "1.0.0",
+  "description": "Smart Venue Experience — Node.js/Express backend with WebSocket real-time streaming",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "uuid": "^9.0.0",
+    "ws": "^8.14.2"
+  }
+}

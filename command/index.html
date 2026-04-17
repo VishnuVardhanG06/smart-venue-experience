@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Command Center — Smart Venue Experience</title>
+  <meta name="description" content="Supervisor command dashboard — live heatmap, incident matrix, gate analytics, staff availability and KPIs."/>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    /* ── Layout ── */
+    .cmd-layout { display: grid; grid-template-columns: 240px 1fr; grid-template-rows: 60px 1fr; min-height: 100vh; position: relative; z-index: 1; }
+    /* Sidebar */
+    .sidebar { grid-column: 1; grid-row: 1 / -1; background: rgba(5,9,20,0.95); border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; padding: var(--space-md); gap: 4px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .sidebar-logo { display: flex; align-items: center; gap: 8px; padding: var(--space-md) var(--space-sm); margin-bottom: var(--space-md); border-bottom: 1px solid var(--glass-border); }
+    .sidebar-logo-icon { font-size: 1.6rem; }
+    .sidebar-logo-text { font-family: var(--font-display); font-size: 0.95rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+    .sidebar-logo-sub { font-size: 0.62rem; color: var(--text-muted); }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); font-size: 0.82rem; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.2s; text-decoration: none; border: none; background: none; width: 100%; text-align: left; }
+    .nav-item:hover  { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+    .nav-item.active { color: var(--accent-cyan); background: rgba(41,121,255,0.12); border: 1px solid rgba(41,121,255,0.2); }
+    .nav-item .icon { font-size: 1rem; width: 20px; text-align: center; }
+    .nav-section { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; padding: var(--space-sm) 12px; margin-top: var(--space-md); }
+    .sidebar-footer { margin-top: auto; padding-top: var(--space-md); border-top: 1px solid var(--glass-border); font-size: 0.72rem; color: var(--text-muted); }
+    /* Top bar */
+    .topbar { grid-column: 2; height: 60px; background: rgba(5,9,20,0.9); border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-xl); position: sticky; top: 0; z-index: var(--z-nav); backdrop-filter: blur(20px); }
+    .topbar-title { font-family: var(--font-display); font-size: 1rem; font-weight: 800; color: var(--text-primary); }
+    .topbar-actions { display: flex; align-items: center; gap: var(--space-md); }
+    /* Main */
+    .main-area { grid-column: 2; overflow-y: auto; padding: var(--space-lg) var(--space-xl); }
+    /* KPI strip */
+    .kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-md); margin-bottom: var(--space-lg); }
+    .kpi-card { padding: var(--space-md) var(--space-lg); border-radius: var(--radius-lg); background: var(--glass-bg); border: 1px solid var(--glass-border); position: relative; overflow: hidden; transition: transform 0.2s; }
+    .kpi-card:hover { transform: translateY(-2px); }
+    .kpi-card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:var(--kpi-color,var(--accent-blue)); }
+    .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+    .kpi-value { font-family: var(--font-display); font-size: 1.8rem; font-weight: 900; color: var(--text-primary); line-height: 1; margin: 4px 0; }
+    .kpi-delta { font-size: 0.72rem; font-weight: 600; }
+    .kpi-icon  { position: absolute; right: var(--space-md); top: 50%; transform: translateY(-50%); font-size: 1.8rem; opacity: 0.1; }
+    /* Dashboard grid */
+    .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); }
+    .dash-grid .full-row { grid-column: 1 / -1; }
+    .dash-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .dash-card-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--glass-border); }
+    .dash-card-title { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+    .dash-card-body { padding: var(--space-lg); }
+    /* Heatmap */
+    .heatmap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-sm); }
+    .heat-zone { border-radius: var(--radius-md); padding: var(--space-md); position: relative; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+    .heat-zone:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .heat-zone.normal   { background: rgba(0,230,118,0.12); border: 1px solid rgba(0,230,118,0.25); }
+    .heat-zone.alert    { background: rgba(255,171,0,0.12);  border: 1px solid rgba(255,171,0,0.25);  }
+    .heat-zone.critical { background: rgba(255,23,68,0.15);  border: 1px solid rgba(255,23,68,0.3);   animation: glow-pulse 1.5s infinite; }
+    .heat-zone .hz-name { font-size: 0.72rem; font-weight: 700; color: var(--text-primary); }
+    .heat-zone .hz-pct  { font-family: var(--font-display); font-size: 1.6rem; font-weight: 900; }
+    .heat-zone.normal .hz-pct   { color: var(--accent-green); }
+    .heat-zone.alert .hz-pct    { color: var(--accent-amber); }
+    .heat-zone.critical .hz-pct { color: var(--accent-red); }
+    .heat-zone .hz-occ  { font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; }
+    /* Chart canvas */
+    .chart-canvas { width: 100%; height: 180px; }
+    /* Staff matrix */
+    .staff-row { display: flex; align-items: center; gap: var(--space-md); padding: 10px var(--space-md); border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .staff-row:last-child { border-bottom: none; }
+    .staff-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg,var(--accent-violet),var(--accent-blue)); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .staff-row .sr-name { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+    .staff-row .sr-role { font-size: 0.68rem; color: var(--text-muted); }
+    /* Incidents table */
+    .inc-row { display: flex; align-items: center; gap: var(--space-md); padding: 12px var(--space-md); border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; }
+    .inc-row:hover { background: rgba(41,121,255,0.04); }
+    .inc-row:last-child { border-bottom: none; }
+    .inc-type-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .inc-info { flex: 1; min-width: 0; }
+    .inc-name { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+    .inc-meta { font-size: 0.68rem; color: var(--text-muted); }
+    /* SLA ring */
+    .sla-rings { display: flex; gap: var(--space-md); justify-content: space-around; }
+    .sla-ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .sla-ring-wrap canvas { width: 90px; height: 90px; }
+    .sla-ring-lbl { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    /* Alert log */
+    .alert-log-item { display: flex; gap: var(--space-md); padding: 10px var(--space-md); border-bottom: 1px solid rgba(255,255,255,0.03); align-items: flex-start; }
+    .alert-log-item:last-child { border-bottom: none; }
+    .alert-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .alert-dot.warning  { background: var(--accent-amber); }
+    .alert-dot.critical { background: var(--accent-red); animation: pulse 1.5s infinite; }
+    .alert-dot.info     { background: var(--accent-blue); }
+    .alert-dot.normal   { background: var(--accent-green); }
+    .alert-time { font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+    .alert-text { font-size: 0.78rem; color: var(--text-secondary); }
+    /* Order fulfillment */
+    .fulfil-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .fulfil-row:last-child { border-bottom: none; }
+    /* Page sections */
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+    /* Responsive */
+    @media(max-width:1100px){ .kpi-strip{grid-template-columns:repeat(3,1fr);} .heatmap-grid{grid-template-columns:repeat(2,1fr);} }
+    @media(max-width:900px){ .cmd-layout{grid-template-columns:1fr;grid-template-rows:auto;} .sidebar{display:none;} .topbar{grid-column:1;} .main-area{grid-column:1;} .dash-grid{grid-template-columns:1fr;} }
+    @media(max-width:600px){ .kpi-strip{grid-template-columns:repeat(2,1fr);} }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-mesh"></div>
+  <div id="toast-container"></div>
+
+  <div class="cmd-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <span class="sidebar-logo-icon">🖥️</span>
+        <div><div class="sidebar-logo-text">Command Center</div><div class="sidebar-logo-sub">Supervisor · Ops Dashboard</div></div>
+      </div>
+
+      <span class="nav-section">Overview</span>
+      <button class="nav-item active" onclick="switchSection('overview')" id="nav-overview"><span class="icon">📊</span> Overview</button>
+      <button class="nav-item" onclick="switchSection('heatmap')"  id="nav-heatmap"> <span class="icon">🗺️</span> Venue Heatmap</button>
+      <button class="nav-item" onclick="switchSection('gates')"    id="nav-gates">   <span class="icon">🚪</span> Gate Analytics</button>
+
+      <span class="nav-section">Operations</span>
+      <button class="nav-item" onclick="switchSection('incidents')"  id="nav-incidents"> <span class="icon">🚨</span> Incidents <span id="open-count-badge" class="badge badge-critical" style="margin-left:auto;font-size:0.65rem;">5</span></button>
+      <button class="nav-item" onclick="switchSection('staff')"      id="nav-staff">     <span class="icon">🦺</span> Staff Matrix</button>
+      <button class="nav-item" onclick="switchSection('orders')"     id="nav-orders">    <span class="icon">📦</span> Orders</button>
+
+      <span class="nav-section">Monitoring</span>
+      <button class="nav-item" onclick="switchSection('alerts')"     id="nav-alerts">    <span class="icon">🔔</span> Alert Log</button>
+      <button class="nav-item" onclick="switchSection('sla')"        id="nav-sla">       <span class="icon">🎯</span> SLA Tracker</button>
+
+      <div class="sidebar-footer">
+        <div class="live-dot">System Live</div>
+        <div style="margin-top:4px;">Refresh lag &lt;60s</div>
+        <div style="margin-top:4px;"><a href="../index.html" style="color:var(--accent-blue);text-decoration:none;">← Back to Hub</a></div>
+      </div>
+    </aside>
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-title" id="topbar-title">📊 Overview Dashboard</div>
+      <div class="topbar-actions">
+        <div id="last-refresh" class="text-muted text-xs">Refreshed just now</div>
+        <button class="btn btn-secondary btn-sm" onclick="forceRefresh()">↻ Refresh</button>
+        <div style="width:1px;height:20px;background:var(--glass-border);"></div>
+        <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);">Ops Team</div>
+      </div>
+    </header>
+
+    <!-- Main area -->
+    <main class="main-area">
+
+      <!-- ── OVERVIEW ───────────────────────────────────── -->
+      <section class="page-section active" id="sec-overview">
+        <!-- KPI strip -->
+        <div class="kpi-strip">
+          <div class="kpi-card" style="--kpi-color:#00e676;">
+            <div class="kpi-label">Total Occupancy</div>
+            <div class="kpi-value" id="kpi-occ">—</div>
+            <div class="kpi-delta up" id="kpi-occ-pct">— of capacity</div>
+            <span class="kpi-icon">🏟️</span>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#ff1744;">
+            <div class="kpi-label">Open Incidents</div>
+            <div class="kpi-value" id="kpi-inc">—</div>
+            <div class="kpi-delta" id="kpi-inc-sub" style="color:var(--accent-amber)">— in-progress</div>
+            <span class="kpi-icon">🚨</span>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#2979ff;">
+            <div class="kpi-label">Avg Gate Wait</div>
+            <div class="kpi-value" id="kpi-wait">—</div>
+            <div class="kpi-delta down">minutes</div>
+            <span class="kpi-icon">⏱️</span>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#7c4dff;">
+            <div class="kpi-label">Staff Available</div>
+            <div class="kpi-value" id="kpi-staff">—</div>
+            <div class="kpi-delta up" id="kpi-staff-sub">of deployed</div>
+            <span class="kpi-icon">🦺</span>
+          </div>
+          <div class="kpi-card" style="--kpi-color:#00e5ff;">
+            <div class="kpi-label">Order Fill Rate</div>
+            <div class="kpi-value" id="kpi-orders">—</div>
+            <div class="kpi-delta up">delivered / total</div>
+            <span class="kpi-icon">📦</span>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <!-- Mini heatmap -->
+          <div class="dash-card full-row">
+            <div class="dash-card-header">
+              <span class="dash-card-title">🗺️ Zone Heatmap <span class="badge badge-cyan" style="font-size:0.65rem;margin-left:6px">Live</span></span>
+              <div class="text-xs text-muted">Color = occupancy level</div>
+            </div>
+            <div class="dash-card-body">
+              <div class="heatmap-grid" id="mini-heatmap"></div>
+            </div>
+          </div>
+
+          <!-- Gate chart -->
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title">🚪 Gate Queue Lengths</span>
+              <div class="live-dot" style="font-size:0.68rem;">Auto-refresh</div>
+            </div>
+            <div class="dash-card-body" style="padding:var(--space-md);">
+              <canvas class="chart-canvas" id="gate-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Active incidents mini -->
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title">🚨 Active Incidents</span>
+              <button class="btn btn-ghost btn-sm" onclick="switchSection('incidents')">View All →</button>
+            </div>
+            <div id="overview-incidents"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── HEATMAP ─────────────────────────────────────── -->
+      <section class="page-section" id="sec-heatmap">
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <span class="dash-card-title">🗺️ Full Venue Heatmap</span>
+            <div class="live-dot" style="font-size:0.68rem;">Updated every 6s</div>
+          </div>
+          <div class="dash-card-body">
+            <div style="display:flex;gap:var(--space-md);margin-bottom:var(--space-md);flex-wrap:wrap;">
+              <div class="badge badge-normal">🟢 Normal &lt;85%</div>
+              <div class="badge badge-alert">🟡 Alert 85–96%</div>
+              <div class="badge badge-critical">🔴 Critical &gt;96%</div>
+            </div>
+            <div class="heatmap-grid" id="full-heatmap" style="grid-template-columns:repeat(4,1fr);gap:var(--space-md);"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── GATE ANALYTICS ──────────────────────────────── -->
+      <section class="page-section" id="sec-gates">
+        <div class="dash-card" style="margin-bottom:var(--space-lg);">
+          <div class="dash-card-header">
+            <span class="dash-card-title">🚪 Real-Time Gate Queue Bar Chart</span>
+            <div class="live-dot" style="font-size:0.68rem;">30s auto-refresh</div>
+          </div>
+          <div class="dash-card-body">
+            <canvas id="full-gate-chart" style="width:100%;height:260px;"></canvas>
+          </div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-header"><span class="dash-card-title">🚪 Gate Status Table</span></div>
+          <table class="data-table" id="gate-table" style="min-width:100%;">
+            <thead><tr><th>Gate</th><th>Zone</th><th>Type</th><th>Queue</th><th>Wait</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="gate-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── INCIDENTS ───────────────────────────────────── -->
+      <section class="page-section" id="sec-incidents">
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <span class="dash-card-title">🚨 Incident Management</span>
+            <div style="display:flex;gap:var(--space-sm);">
+              <select class="form-select" style="width:auto;font-size:0.78rem;padding:6px 30px 6px 10px;" id="cmd-inc-filter" onchange="renderAllIncidents()">
+                <option value="all">All</option>
+                <option value="open">Open</option>
+                <option value="in-progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+          </div>
+          <div id="cmd-incidents"></div>
+        </div>
+      </section>
+
+      <!-- ── STAFF MATRIX ────────────────────────────────── -->
+      <section class="page-section" id="sec-staff">
+        <div class="dash-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="dash-card full-row">
+            <div class="dash-card-header"><span class="dash-card-title">🦺 Staff Availability Matrix</span></div>
+            <div id="staff-matrix"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── ORDERS ──────────────────────────────────────── -->
+      <section class="page-section" id="sec-orders">
+        <div class="dash-card">
+          <div class="dash-card-header"><span class="dash-card-title">📦 Order Fulfillment</span><div class="kpi-delta up" id="orders-rate">—% delivered</div></div>
+          <div id="orders-table-wrap"></div>
+        </div>
+      </section>
+
+      <!-- ── ALERT LOG ───────────────────────────────────── -->
+      <section class="page-section" id="sec-alerts">
+        <div class="dash-card">
+          <div class="dash-card-header"><span class="dash-card-title">🔔 System Alert Log</span><button class="btn btn-ghost btn-sm" onclick="VenueDB.notifications.forEach(n=>n.read=true); renderAlerts()">Clear all</button></div>
+          <div id="alert-log"></div>
+        </div>
+      </section>
+
+      <!-- ── SLA TRACKER ─────────────────────────────────── -->
+      <section class="page-section" id="sec-sla">
+        <div class="kpi-strip" style="grid-template-columns:repeat(3,1fr);">
+          <div class="kpi-card" style="--kpi-color:#00e676;"><div class="kpi-label">Avg Resolution Time</div><div class="kpi-value" id="sla-avg-res">6.2m</div><div class="kpi-delta up">Target &lt;8 min ✅</div></div>
+          <div class="kpi-card" style="--kpi-color:#2979ff;"><div class="kpi-label">Incidents Resolved</div><div class="kpi-value" id="sla-resolved">1</div><div class="kpi-delta up">of <span id="sla-total">6</span> total</div></div>
+          <div class="kpi-card" style="--kpi-color:#ffab00;"><div class="kpi-label">Escalations</div><div class="kpi-value" id="sla-esc">0</div><div class="kpi-delta" style="color:var(--accent-amber)">requires attention</div></div>
+        </div>
+        <div class="dash-card" style="margin-top:var(--space-lg);">
+          <div class="dash-card-header"><span class="dash-card-title">🎯 SLA Performance Gauges</span></div>
+          <div class="dash-card-body">
+            <div class="sla-rings" id="sla-rings"></div>
+          </div>
+        </div>
+        <div class="dash-card" style="margin-top:var(--space-lg);">
+          <div class="dash-card-header"><span class="dash-card-title">📋 Success Metrics vs Target</span></div>
+          <div class="dash-card-body">
+            <div id="metrics-list"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/workflows.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/api.js"></script>
+  <script>
+  let lastRefreshTime = new Date();
+  let currentSection = 'overview';
+
+  /* ── Section switching ── */
+  function switchSection(name) {
+    currentSection = name;
+    document.querySelectorAll('.page-section').forEach(s=>s.classList.toggle('active',s.id===`sec-${name}`));
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.id===`nav-${name}`));
+    const titles={overview:'📊 Overview Dashboard',heatmap:'🗺️ Venue Heatmap',gates:'🚪 Gate Analytics',incidents:'🚨 Incident Management',staff:'🦺 Staff Matrix',orders:'📦 Order Fulfillment',alerts:'🔔 Alert Log',sla:'🎯 SLA Tracker'};
+    document.getElementById('topbar-title').textContent = titles[name]||'Command Center';
+    renderSection(name);
+  }
+
+  function renderSection(name) {
+    const fns = { overview:renderOverview, heatmap:renderHeatmap, gates:renderGates, incidents:renderAllIncidents, staff:renderStaffMatrix, orders:renderOrders, alerts:renderAlerts, sla:renderSLA };
+    if(fns[name]) fns[name]();
+  }
+
+  /* ── KPI update ── */
+  function updateKPIs() {
+    const totalOcc = VenueDB.zones.reduce((s,z)=>s+z.current_occupancy,0);
+    const totalCap = VenueDB.zones.reduce((s,z)=>s+z.capacity,0);
+    const pct = Math.round((totalOcc/totalCap)*100);
+    setText('kpi-occ', totalOcc.toLocaleString());
+    setText('kpi-occ-pct', `${pct}% of ${totalCap.toLocaleString()}`);
+
+    const openInc = VenueDB.incidents.filter(i=>i.status!=='resolved');
+    const inProg  = openInc.filter(i=>i.status==='in-progress');
+    setText('kpi-inc', openInc.length);
+    setText('kpi-inc-sub', `${inProg.length} in-progress`);
+    setText('open-count-badge', openInc.length);
+
+    const avgWait = VenueDB.gates.reduce((s,g)=>s+g.avg_wait_minutes,0)/VenueDB.gates.length;
+    setText('kpi-wait', avgWait.toFixed(1));
+
+    const avail = VenueDB.staff.filter(s=>s.availability_status==='available').length;
+    setText('kpi-staff', avail);
+    setText('kpi-staff-sub', `of ${VenueDB.staff.length} deployed`);
+
+    const delivered = VenueDB.orders.filter(o=>o.status==='delivered').length;
+    const total     = VenueDB.orders.length;
+    setText('kpi-orders', total>0?`${Math.round((delivered/total)*100)}%`:'—');
+
+    lastRefreshTime = new Date();
+    setText('last-refresh', `Refreshed just now`);
+  }
+
+  /* ── Overview ── */
+  function renderOverview() {
+    updateKPIs();
+    renderMiniHeatmap();
+    renderGateChart('gate-chart');
+    renderOverviewIncidents();
+  }
+
+  /* ── Heatmap ── */
+  function renderMiniHeatmap() { renderHeatmapInto('mini-heatmap'); }
+  function renderHeatmap()      { renderHeatmapInto('full-heatmap'); }
+  function renderHeatmapInto(containerId) {
+    const c = document.getElementById(containerId);
+    if(!c) return;
+    c.innerHTML = VenueDB.zones.map(z=>{
+      const pct = VenueDB.occupancyPct(z);
+      return `<div class="heat-zone ${z.status}" title="${z.zone_name}: ${pct}%">
+        <div class="hz-name">${z.zone_name}</div>
+        <div class="hz-pct">${pct}%</div>
+        <div class="hz-occ">${z.current_occupancy.toLocaleString()} / ${z.capacity.toLocaleString()}</div>
+        <div style="margin-top:6px;">${statusBadge(z.status)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Gate chart ── */
+  function renderGateChart(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if(!canvas) return;
+    requestAnimationFrame(()=>{
+      const labels = VenueDB.gates.map(g=>g.gate_id);
+      const values = VenueDB.gates.map(g=>g.queue_length);
+      drawBarChart(canvas, labels, values, { threshold: 80 });
+    });
+  }
+
+  /* ── Overview incidents ── */
+  function renderOverviewIncidents() {
+    const el = document.getElementById('overview-incidents');
+    if(!el) return;
+    const open = VenueDB.incidents.filter(i=>i.status!=='resolved').slice(0,5);
+    el.innerHTML = open.map(inc=>`
+      <div class="inc-row">
+        <span class="inc-type-icon">${incidentIcon(inc.type)}</span>
+        <div class="inc-info">
+          <div class="inc-name">${inc.type.replace(/_/g,' ')} · ${VenueDB.getZone(inc.zone_id)?.zone_name||inc.zone_id}</div>
+          <div class="inc-meta">${relTime(inc.timestamp)} · ${inc.assigned_staff_id?VenueDB.getStaff(inc.assigned_staff_id)?.name||'Assigned':'Unassigned'}${inc.escalated?' · ⚠️ Escalated':''}</div>
+        </div>
+        ${statusBadge(inc.status)}
+      </div>`).join('') || '<div style="padding:var(--space-lg);text-align:center;color:var(--text-muted)">No open incidents ✅</div>';
+  }
+
+  /* ── Gates section ── */
+  function renderGates() {
+    renderGateChart('full-gate-chart');
+    const tbody = document.getElementById('gate-tbody');
+    if(!tbody) return;
+    tbody.innerHTML = VenueDB.gates.map(g=>{
+      const zone = VenueDB.getZone(g.zone_id);
+      return `<tr>
+        <td style="font-weight:700;color:var(--text-primary)">${g.gate_id}</td>
+        <td>${zone?.zone_name||g.zone_id}</td>
+        <td>${g.gate_type==='entry'?'🚪 Entry':'🚶 Exit'}</td>
+        <td><span style="font-weight:700;color:${g.queue_length>100?'#ff1744':g.queue_length>50?'#ffab00':'#00e676'}">${g.queue_length}</span></td>
+        <td>${g.avg_wait_minutes} min</td>
+        <td>${statusBadge(g.is_open?'normal':'critical').replace('normal','open').replace('badge-normal','badge-normal')}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="showToast('Gate ${g.gate_id}','Queue: ${g.queue_length} · Wait: ${g.avg_wait_minutes}min','info')"">Details</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  /* ── All incidents ── */
+  function renderAllIncidents() {
+    const filter=document.getElementById('cmd-inc-filter')?.value||'all';
+    const list=filter==='all'?VenueDB.incidents:VenueDB.incidents.filter(i=>i.status===filter);
+    const el=document.getElementById('cmd-incidents');
+    if(!el) return;
+    el.innerHTML=list.map(inc=>{
+      const zone=VenueDB.getZone(inc.zone_id);
+      const staff=inc.assigned_staff_id?VenueDB.getStaff(inc.assigned_staff_id):null;
+      return `<div class="inc-row">
+        <span class="inc-type-icon">${incidentIcon(inc.type)}</span>
+        <div class="inc-info">
+          <div class="inc-name">${inc.type.replace(/_/g,' ')} &nbsp;·&nbsp; ${zone?.zone_name||inc.zone_id}</div>
+          <div class="inc-meta">ID: ${inc.incident_id} &nbsp;·&nbsp; ${relTime(inc.timestamp)} &nbsp;·&nbsp; ${staff?`👤 ${staff.name}`:'Unassigned'}${inc.escalated?' &nbsp;·&nbsp; <span style="color:#ff1744;font-weight:700;">⚠️ ESCALATED</span>':''}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          ${statusBadge(inc.status)}
+          ${inc.status!=='resolved'?`<button class="btn btn-success btn-sm" onclick="cmdResolve('${inc.incident_id}')">Resolve</button>`:''}
+        </div>
+      </div>`;
+    }).join('')||'<div style="padding:var(--space-lg);text-align:center;color:var(--text-muted)">No incidents found</div>';
+  }
+
+  function cmdResolve(id){
+    VenueDB.resolveIncident(id);
+    renderAllIncidents();
+    updateKPIs();
+    showToast('✅ Resolved',`Incident ${id} marked as resolved`,'success');
+  }
+
+  /* ── Staff matrix ── */
+  function renderStaffMatrix() {
+    const el=document.getElementById('staff-matrix');
+    if(!el) return;
+    const byZone={};
+    VenueDB.staff.forEach(s=>{ (byZone[s.assigned_zone]=byZone[s.assigned_zone]||[]).push(s); });
+    el.innerHTML=Object.entries(byZone).map(([zid,members])=>{
+      const zone=VenueDB.getZone(zid);
+      return `<div style="padding:var(--space-sm) var(--space-md);border-bottom:1px solid rgba(255,255,255,0.04);">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">${zone?.zone_name||zid}</div>
+        ${members.map(m=>`<div class="staff-row">
+          <div class="staff-avatar">${m.name.split(' ').map(w=>w[0]).join('')}</div>
+          <div style="flex:1"><div class="sr-name">${m.name}</div><div class="sr-role">${m.role}</div></div>
+          <div style="display:flex;align-items:center;gap:6px;">${statusBadge(m.availability_status)}</div>
+        </div>`).join('')}
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Orders ── */
+  function renderOrders() {
+    const el=document.getElementById('orders-table-wrap');
+    if(!el) return;
+    const delivered=VenueDB.orders.filter(o=>o.status==='delivered').length;
+    setText('orders-rate',`${Math.round((delivered/VenueDB.orders.length)*100)}% delivered`);
+    el.innerHTML=`<table class="data-table" style="min-width:100%;">
+      <thead><tr><th>Order ID</th><th>Attendee</th><th>Items</th><th>Total</th><th>Zone</th><th>Status</th><th>Time</th></tr></thead>
+      <tbody>${VenueDB.orders.map(o=>{
+        const att=VenueDB.attendees.find(a=>a.attendee_id===o.attendee_id);
+        return `<tr>
+          <td style="font-weight:700;color:var(--text-primary)">${o.order_id}</td>
+          <td>${att?.seat_number||o.attendee_id}</td>
+          <td>${o.items.map(i=>`${i.qty}× ${i.name}`).join(', ')}</td>
+          <td style="font-weight:700;color:var(--accent-cyan)">${formatCurrency(o.total)}</td>
+          <td>${o.delivery_zone}</td>
+          <td>${statusBadge(o.status)}</td>
+          <td>${relTime(o.timestamp)}</td>
+        </tr>`;}).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  /* ── Alert log ── */
+  function renderAlerts() {
+    const el=document.getElementById('alert-log');
+    if(!el) return;
+    const icons={info:'info',warning:'warning',success:'normal',danger:'critical'};
+    el.innerHTML=VenueDB.notifications.map(n=>`
+      <div class="alert-log-item">
+        <div class="alert-dot ${icons[n.type]||'info'}"></div>
+        <div style="flex:1"><div class="alert-text"><strong style="color:var(--text-primary)">${n.title}:</strong> ${n.body}</div></div>
+        <div class="alert-time">${relTime(n.time)}</div>
+      </div>`).join('')||'<div style="padding:var(--space-lg);text-align:center;color:var(--text-muted)">No alerts</div>';
+  }
+
+  /* ── SLA ── */
+  function renderSLA() {
+    const resolved=VenueDB.incidents.filter(i=>i.status==='resolved').length;
+    const total=VenueDB.incidents.length;
+    const escalated=VenueDB.incidents.filter(i=>i.escalated).length;
+    setText('sla-resolved',resolved);
+    setText('sla-total',total);
+    setText('sla-esc',escalated);
+
+    // Gauges
+    const gauges=[
+      {label:'Entry Wait Reduction',pct:73,color:'#00e676'},
+      {label:'Complaint Reduction',pct:68,color:'#2979ff'},
+      {label:'Order Accuracy',pct:96,color:'#7c4dff'},
+      {label:'Portal Adoption',pct:64,color:'#00e5ff'},
+    ];
+    const rings=document.getElementById('sla-rings');
+    if(rings) {
+      rings.innerHTML=gauges.map((g,i)=>`<div class="sla-ring-wrap"><canvas id="gauge-${i}" width="90" height="90"></canvas><div class="sla-ring-lbl">${g.label}</div></div>`).join('');
+      gauges.forEach((g,i)=>{
+        const c=document.getElementById(`gauge-${i}`);
+        if(c) requestAnimationFrame(()=>drawGauge(c,g.pct,{color:g.color,label:`${g.pct}%`}));
+      });
+    }
+
+    // Metrics
+    const metrics=[
+      {label:'Avg entry wait reduced',value:'32%',target:'30%',met:true},
+      {label:'Queue complaint reduction',value:'41%',target:'40%',met:true},
+      {label:'Incident resolution time',value:'6.2m',target:'<8 min',met:true},
+      {label:'Order delivery accuracy',value:'96%',target:'95%',met:true},
+      {label:'Attendee portal adoption',value:'64%',target:'60%',met:true},
+      {label:'Staff surge response time',value:'2.8m',target:'<3 min',met:true},
+      {label:'Dashboard refresh lag',value:'42s',target:'<60s',met:true},
+    ];
+    const ml=document.getElementById('metrics-list');
+    if(ml) ml.innerHTML=metrics.map(m=>`
+      <div class="fulfil-row">
+        <div style="font-size:0.82rem;color:var(--text-secondary)">${m.label}</div>
+        <div style="display:flex;align-items:center;gap:var(--space-md);">
+          <span style="font-family:var(--font-display);font-weight:700;color:var(--text-primary)">${m.value}</span>
+          <span style="font-size:0.7rem;color:var(--text-muted)">target: ${m.target}</span>
+          <span>${m.met?'<span class="badge badge-normal">✅ Met</span>':'<span class="badge badge-critical">❌ Miss</span>'}</span>
+        </div>
+      </div>`).join('');
+  }
+
+  /* ── Helpers ── */
+  function setText(id,val){ const el=document.getElementById(id); if(el)el.textContent=val; }
+  function forceRefresh(){ renderSection(currentSection); showToast('↻ Refreshed','Dashboard data updated','info',1500); }
+
+  /* ── Init ── */
+  VenueDB.startSimulation();
+  WorkflowEngine.start();
+  renderOverview();
+
+  VenueDB.on('tick',()=>{
+    updateKPIs();
+    if(currentSection==='overview'){
+      renderMiniHeatmap();
+      renderGateChart('gate-chart');
+      renderOverviewIncidents();
+    }
+    if(currentSection==='heatmap') renderHeatmap();
+    if(currentSection==='gates')   renderGates();
+    if(currentSection==='staff')   renderStaffMatrix();
+  });
+
+  VenueDB.on('incident:new',()=>{ updateKPIs(); if(currentSection==='incidents') renderAllIncidents(); showToast('🚨 New Incident','A new incident has been logged','danger'); });
+  VenueDB.on('incident:resolved',()=>{ updateKPIs(); });
+  VenueDB.on('notification:new',()=>{ if(currentSection==='alerts') renderAlerts(); });
+
+  /* Periodic refresh counter */
+  setInterval(()=>{
+    const diff=Math.floor((new Date()-lastRefreshTime)/1000);
+    const el=document.getElementById('last-refresh');
+    if(el) el.textContent=diff<5?'Refreshed just now':`Refreshed ${diff}s ago`;
+  }, 5000);
+  </script>
+</body>
+</html>

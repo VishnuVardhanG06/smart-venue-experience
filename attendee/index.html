@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Venue — Attendee Portal · Smart Venue Experience</title>
+  <meta name="description" content="Your personal game-day companion. View seat info, check queue times, order food and report issues."/>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <style>
+    body { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--bg-base); }
+    .app-shell { display: flex; flex-direction: column; min-height: 100vh; position: relative; z-index: 1; }
+    /* Top nav */
+    .top-nav { display: flex; align-items: center; justify-content: space-between; padding: 14px var(--space-lg); background: rgba(10,17,40,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; z-index: var(--z-nav); }
+    .nav-logo { font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+    .nav-notif { position: relative; cursor: pointer; font-size: 1.3rem; padding: 4px; }
+    .notif-badge { position: absolute; top: -2px; right: -2px; width: 16px; height: 16px; background: var(--accent-red); border-radius: 50%; font-size: 0.6rem; font-weight: 700; display: flex; align-items: center; justify-content: center; color: #fff; border: 2px solid var(--bg-base); }
+    /* Page content */
+    .page-content { flex: 1; overflow-y: auto; padding: var(--space-md); padding-bottom: 90px; }
+    /* Section titles */
+    .section-title { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-md); display: flex; align-items: center; gap: 6px; }
+    /* Home page */
+    .ticket-card { background: linear-gradient(135deg, rgba(41,121,255,0.3), rgba(124,77,255,0.2)); border: 1px solid rgba(41,121,255,0.3); border-radius: var(--radius-xl); padding: var(--space-lg); margin-bottom: var(--space-md); position: relative; overflow: hidden; }
+    .ticket-card::after { content:''; position:absolute; right:-30px; top:-30px; width:120px; height:120px; background:radial-gradient(circle,rgba(0,229,255,0.15),transparent 70%); }
+    .ticket-event { font-size: 0.7rem; color: var(--accent-cyan); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    .ticket-teams { font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin: 4px 0; }
+    .ticket-meta { display: flex; gap: var(--space-md); margin-top: var(--space-sm); flex-wrap: wrap; }
+    .ticket-meta-item { display: flex; flex-direction: column; }
+    .ticket-meta-item .lbl { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; }
+    .ticket-meta-item .val { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
+    /* Moment countdown */
+    .moment-card { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); border-radius: var(--radius-md); background: rgba(255,171,0,0.08); border: 1px solid rgba(255,171,0,0.2); margin-bottom: var(--space-md); }
+    .moment-icon { font-size: 1.8rem; }
+    .moment-info .label { font-size: 0.7rem; color: var(--accent-amber); font-weight: 700; text-transform: uppercase; }
+    .moment-info .val   { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+    /* Facility quick access */
+    .fac-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); margin-bottom: var(--space-md); }
+    .fac-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: var(--space-md) var(--space-sm); display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: all 0.25s; text-align: center; }
+    .fac-btn:hover { background: rgba(41,121,255,0.1); border-color: rgba(41,121,255,0.3); transform: translateY(-2px); }
+    .fac-btn .fi { font-size: 1.6rem; }
+    .fac-btn .fn { font-size: 0.7rem; font-weight: 600; color: var(--text-secondary); }
+    /* Map placeholder */
+    .map-area { border-radius: var(--radius-lg); overflow: hidden; position: relative; height: 200px; background: linear-gradient(135deg, rgba(10,17,40,0.9), rgba(15,26,56,0.9)); border: 1px solid var(--glass-border); margin-bottom: var(--space-md); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: var(--space-sm); }
+    .map-area canvas { position: absolute; inset: 0; }
+    .map-overlay { position: relative; z-index: 1; text-align: center; }
+    /* Queue cards */
+    .queue-card { padding: var(--space-md); border-radius: var(--radius-md); background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-sm); transition: background 0.2s; }
+    .queue-card:hover { background: rgba(41,121,255,0.06); }
+    .queue-emoji { font-size: 1.8rem; flex-shrink: 0; }
+    .queue-info { flex: 1; min-width: 0; }
+    .queue-name { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
+    .queue-loc  { font-size: 0.72rem; color: var(--text-muted); }
+    .queue-wait { text-align: right; flex-shrink: 0; }
+    .queue-wait .min { font-family: var(--font-display); font-size: 1.3rem; font-weight: 800; }
+    .queue-wait .unit { font-size: 0.65rem; color: var(--text-muted); display: block; }
+    .queue-bar-wrap { margin-top: 4px; }
+    /* Order */
+    .cart-count { background: var(--accent-red); color: #fff; border-radius: var(--radius-full); min-width: 20px; padding: 0 5px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; }
+    .menu-cats { display: flex; gap: var(--space-sm); overflow-x: auto; padding-bottom: var(--space-sm); margin-bottom: var(--space-md); scrollbar-width: none; }
+    .menu-cats::-webkit-scrollbar { display: none; }
+    .cat-chip { padding: 6px 14px; border-radius: var(--radius-full); font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid var(--glass-border); background: transparent; color: var(--text-muted); white-space: nowrap; transition: all 0.2s; }
+    .cat-chip.active { background: rgba(41,121,255,0.2); color: var(--accent-cyan); border-color: rgba(41,121,255,0.4); }
+    .menu-item-card { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); border-radius: var(--radius-md); background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); margin-bottom: var(--space-sm); }
+    .menu-item-card.unavail { opacity: 0.45; }
+    .menu-emoji { font-size: 2rem; flex-shrink: 0; }
+    .menu-info { flex: 1; min-width: 0; }
+    .menu-name { font-size: 0.88rem; font-weight: 700; color: var(--text-primary); }
+    .menu-desc { font-size: 0.72rem; color: var(--text-muted); }
+    .menu-price { font-family: var(--font-display); font-weight: 700; color: var(--accent-cyan); font-size: 0.9rem; margin-top: 2px; }
+    .add-btn { width: 32px; height: 32px; border-radius: 50%; border: none; background: rgba(41,121,255,0.2); color: var(--accent-cyan); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+    .add-btn:hover { background: rgba(41,121,255,0.4); transform: scale(1.1); }
+    .add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    /* Cart strip */
+    .cart-strip { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 448px; background: linear-gradient(135deg,var(--accent-blue),var(--accent-violet)); border-radius: var(--radius-lg); padding: var(--space-md) var(--space-lg); display: flex; align-items: center; justify-content: space-between; box-shadow: 0 8px 32px rgba(41,121,255,0.4); cursor: pointer; z-index: 50; }
+    .cart-strip.hidden { display: none; }
+    .cart-strip .info { color: #fff; }
+    .cart-strip .count { font-size: 0.75rem; font-weight: 600; opacity: 0.8; }
+    .cart-strip .total { font-family: var(--font-display); font-weight: 800; font-size: 1rem; }
+    .cart-strip .cta   { font-size: 0.82rem; font-weight: 700; color: #fff; background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: var(--radius-full); }
+    /* Order tracker */
+    .order-tracker { border-radius: var(--radius-lg); background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); overflow: hidden; margin-bottom: var(--space-md); }
+    .tracker-header { padding: var(--space-md) var(--space-md) var(--space-sm); border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; }
+    .tracker-steps { display: flex; padding: var(--space-md); gap: var(--space-sm); position: relative; }
+    .tracker-steps::before { content:''; position:absolute; top:24px; left:28px; right:28px; height:2px; background:rgba(255,255,255,0.06); }
+    .step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; position: relative; }
+    .step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; border: 2px solid rgba(255,255,255,0.1); background: var(--bg-base); position: relative; z-index: 1; transition: all 0.4s; }
+    .step.done .step-dot  { background: var(--accent-green); border-color: var(--accent-green); }
+    .step.active .step-dot { background: var(--accent-blue); border-color: var(--accent-blue); animation: glow-pulse 1.5s infinite; }
+    .step-lbl { font-size: 0.62rem; color: var(--text-muted); text-align: center; font-weight: 600; }
+    .step.done .step-lbl, .step.active .step-lbl { color: var(--text-primary); }
+    /* Help / incident */
+    .help-opt { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); border-radius: var(--radius-md); background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); cursor: pointer; transition: all 0.2s; margin-bottom: var(--space-sm); }
+    .help-opt:hover { background: rgba(41,121,255,0.08); border-color: rgba(41,121,255,0.25); }
+    .help-opt .hi { font-size: 1.6rem; }
+    .help-opt .ht { font-size: 0.88rem; font-weight: 700; color: var(--text-primary); }
+    .help-opt .hd { font-size: 0.72rem; color: var(--text-muted); }
+    .help-opt .ha { margin-left: auto; color: var(--text-muted); font-size: 1rem; }
+    /* LF cards */
+    .lf-card { padding: var(--space-md); border-radius: var(--radius-md); background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); margin-bottom: var(--space-sm); }
+    .lf-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    /* Notifications */
+    .notif-item { display: flex; gap: var(--space-md); padding: var(--space-md); border-radius: var(--radius-md); border: 1px solid var(--glass-border); margin-bottom: var(--space-sm); background: rgba(255,255,255,0.02); position: relative; transition: background 0.2s; }
+    .notif-item.unread { border-color: rgba(41,121,255,0.25); background: rgba(41,121,255,0.05); }
+    .notif-item.unread::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent-blue); border-radius:var(--radius-sm) 0 0 var(--radius-sm); }
+    .notif-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+    .notif-title { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
+    .notif-body  { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
+    .notif-time  { font-size: 0.68rem; color: var(--text-muted); margin-top: 4px; }
+    /* Bottom tab bar */
+    .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; padding: 8px var(--space-md) max(12px, env(safe-area-inset-bottom)); background: rgba(5,9,20,0.92); backdrop-filter: blur(20px); border-top: 1px solid var(--glass-border); z-index: var(--z-nav); }
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: var(--z-modal); display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal-sheet { width: 100%; max-width: 480px; background: var(--bg-elevated); border-radius: var(--radius-xl) var(--radius-xl) 0 0; border: 1px solid var(--glass-border); border-bottom: none; padding: var(--space-lg); max-height: 85vh; overflow-y: auto; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.23,1,0.32,1); }
+    .modal-overlay.open .modal-sheet { transform: translateY(0); }
+    .modal-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.12); border-radius: var(--radius-full); margin: 0 auto var(--space-lg); }
+    .modal-title { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: var(--space-lg); }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-mesh"></div>
+  <div id="toast-container"></div>
+
+  <div class="app-shell">
+    <!-- Top nav -->
+    <nav class="top-nav">
+      <div class="nav-logo">📱 <span>My Venue</span></div>
+      <div style="display:flex;align-items:center;gap:var(--space-md);">
+        <div class="live-dot" style="font-size:0.7rem;">Live</div>
+        <div class="nav-notif" id="notif-bell" onclick="switchTab('notifications')">
+          🔔
+          <span class="notif-badge" id="notif-count">2</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Page content -->
+    <div class="page-content">
+
+      <!-- HOME ───────────────────────────────────────── -->
+      <div data-page="home" class="tab-page active">
+        <!-- Ticket card -->
+        <div class="ticket-card animate-fade-in-up">
+          <div class="ticket-event">🏏 IPL 2026 · Match 47</div>
+          <div class="ticket-teams">Mumbai Indians <span style="color:var(--text-muted);font-size:1rem;">vs</span> Royal Challengers</div>
+          <div class="ticket-meta">
+            <div class="ticket-meta-item"><span class="lbl">Your Seat</span><span class="val">N12 · Row 8 · Seat 14</span></div>
+            <div class="ticket-meta-item"><span class="lbl">Entry Gate</span><span class="val">Gate G01</span></div>
+            <div class="ticket-meta-item"><span class="lbl">Zone</span><span class="val">North Stand</span></div>
+            <div class="ticket-meta-item"><span class="lbl">Ticket ID</span><span class="val">TKT-10042</span></div>
+          </div>
+        </div>
+
+        <!-- Next moment -->
+        <div class="moment-card animate-fade-in-up" style="animation-delay:0.1s">
+          <div class="moment-icon">⏰</div>
+          <div class="moment-info">
+            <div class="label">Next Event Moment</div>
+            <div class="val" id="next-moment">Half-time Break — in 8 min</div>
+          </div>
+        </div>
+
+        <!-- Facility quick actions -->
+        <p class="section-title">⚡ Quick Access</p>
+        <div class="fac-grid">
+          <div class="fac-btn" onclick="switchTab('queue')"><span class="fi">🍔</span><span class="fn">Food Queue</span></div>
+          <div class="fac-btn" onclick="switchTab('queue')"><span class="fi">🚻</span><span class="fn">Restroom</span></div>
+          <div class="fac-btn" onclick="switchTab('queue')"><span class="fi">👕</span><span class="fn">Merch</span></div>
+          <div class="fac-btn" onclick="switchTab('order')"><span class="fi">🛵</span><span class="fn">Order Food</span></div>
+          <div class="fac-btn" onclick="switchTab('help')"><span class="fi">🆘</span><span class="fn">Get Help</span></div>
+          <div class="fac-btn" onclick="switchTab('help')"><span class="fi">🎒</span><span class="fn">Lost &amp; Found</span></div>
+        </div>
+
+        <!-- Venue map -->
+        <p class="section-title">🗺️ Venue Map</p>
+        <div class="map-area">
+          <canvas id="venue-map"></canvas>
+          <div class="map-overlay">
+            <div style="font-size:0.75rem;color:var(--accent-cyan);font-weight:600;">📍 You are in North Stand</div>
+            <div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;">Tap gates for live queue info</div>
+          </div>
+        </div>
+
+        <!-- Zone status -->
+        <p class="section-title">🏟️ Zone Status</p>
+        <div id="home-zones"></div>
+      </div>
+
+      <!-- QUEUE ──────────────────────────────────────── -->
+      <div data-page="queue" class="tab-page">
+        <p class="section-title">🍔 Nearby Queue Times</p>
+        <div style="background:rgba(41,121,255,0.07);border:1px solid rgba(41,121,255,0.2);border-radius:var(--radius-md);padding:var(--space-sm) var(--space-md);margin-bottom:var(--space-md);font-size:0.78rem;color:var(--accent-cyan);">
+          📡 Live data — updated every 6 seconds from venue sensors
+        </div>
+        <div id="queue-list"></div>
+      </div>
+
+      <!-- ORDER ──────────────────────────────────────── -->
+      <div data-page="order" class="tab-page">
+        <!-- Active order tracker -->
+        <div id="order-tracker-wrap"></div>
+
+        <p class="section-title">🍽️ Menu <span id="cart-items-count" class="cart-count hidden">0</span></p>
+        <!-- Category filter -->
+        <div class="menu-cats" id="menu-cats">
+          <button class="cat-chip active" data-cat="all">All</button>
+          <button class="cat-chip" data-cat="burgers">🍔 Burgers</button>
+          <button class="cat-chip" data-cat="snacks">🌮 Snacks</button>
+          <button class="cat-chip" data-cat="pizza">🍕 Pizza</button>
+          <button class="cat-chip" data-cat="drinks">🥤 Drinks</button>
+          <button class="cat-chip" data-cat="vip">🥂 VIP</button>
+        </div>
+        <div id="menu-list"></div>
+      </div>
+
+      <!-- HELP ───────────────────────────────────────── -->
+      <div data-page="help" class="tab-page">
+        <p class="section-title">🆘 Help &amp; Support</p>
+        <div class="help-opt" onclick="openReportModal()">
+          <span class="hi">📋</span>
+          <div><div class="ht">Report an Issue</div><div class="hd">Medical, security, facility — raise a ticket with our team</div></div>
+          <span class="ha">›</span>
+        </div>
+        <div class="help-opt" onclick="openLFModal('lost')">
+          <span class="hi">🎒</span>
+          <div><div class="ht">Report Lost Item</div><div class="hd">Log description &amp; photo — our team will search</div></div>
+          <span class="ha">›</span>
+        </div>
+        <div class="help-opt" onclick="openLFModal('found')">
+          <span class="hi">🔎</span>
+          <div><div class="ht">Found Something?</div><div class="hd">Help reunite an item with its owner</div></div>
+          <span class="ha">›</span>
+        </div>
+        <div class="help-opt" onclick="showToast('📞 Calling venue ops...','Connecting you to a live operator.','info')">
+          <span class="hi">📞</span>
+          <div><div class="ht">Call Venue Support</div><div class="hd">Speak directly with operations staff</div></div>
+          <span class="ha">›</span>
+        </div>
+
+        <p class="section-title" style="margin-top:var(--space-lg);">🎒 Lost &amp; Found Log</p>
+        <div id="lf-list"></div>
+      </div>
+
+      <!-- NOTIFICATIONS ──────────────────────────────── -->
+      <div data-page="notifications" class="tab-page">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-md);">
+          <p class="section-title" style="margin-bottom:0;">🔔 Notifications</p>
+          <button class="btn btn-ghost btn-sm" onclick="markAllRead()">Mark all read</button>
+        </div>
+        <div id="notif-list"></div>
+      </div>
+    </div>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <div class="tab-bar" id="bottom-tabs">
+        <button class="tab-btn active" data-tab="home"          onclick="switchTab('home')">         <span class="tab-icon">🏠</span>Home</button>
+        <button class="tab-btn"        data-tab="queue"         onclick="switchTab('queue')">        <span class="tab-icon">⏱️</span>Queues</button>
+        <button class="tab-btn"        data-tab="order"         onclick="switchTab('order')">        <span class="tab-icon">🛵</span>Order</button>
+        <button class="tab-btn"        data-tab="help"          onclick="switchTab('help')">         <span class="tab-icon">🆘</span>Help</button>
+        <button class="tab-btn"        data-tab="notifications" onclick="switchTab('notifications')"><span class="tab-icon">🔔</span>Alerts</button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Cart strip -->
+  <div class="cart-strip hidden" id="cart-strip" onclick="openCartModal()">
+    <div class="info">
+      <div class="count" id="cart-summary-count">1 item</div>
+      <div class="total" id="cart-summary-total">₹0</div>
+    </div>
+    <div class="cta">View Cart →</div>
+  </div>
+
+  <!-- MODALS -->
+  <!-- Report issue -->
+  <div class="modal-overlay" id="report-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">🚨 Report an Issue</div>
+      <div class="form-group" style="margin-bottom:var(--space-md);">
+        <label class="form-label">Issue Type</label>
+        <select class="form-select" id="report-type">
+          <option value="medical">🏥 Medical Emergency</option>
+          <option value="security">🔒 Security Concern</option>
+          <option value="facility_fault">🔧 Facility Fault</option>
+          <option value="crowd_surge">👥 Overcrowding</option>
+          <option value="lost_item">🎒 Lost Item</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:var(--space-md);">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="report-desc" placeholder="Describe the issue briefly..."></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:var(--space-lg);">
+        <label class="form-label">📷 Attach Photo (optional)</label>
+        <input type="file" accept="image/*" class="form-input" style="padding:8px;font-size:0.8rem;"/>
+      </div>
+      <div style="display:flex;gap:var(--space-sm);">
+        <button class="btn btn-ghost w-full" onclick="closeModal('report-modal')">Cancel</button>
+        <button class="btn btn-danger w-full" onclick="submitReport()">Submit Report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lost & found modal -->
+  <div class="modal-overlay" id="lf-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="lf-modal-title">🎒 Report Lost Item</div>
+      <div class="form-group" style="margin-bottom:var(--space-md);">
+        <label class="form-label">Item Description</label>
+        <input type="text" class="form-input" id="lf-desc" placeholder="e.g. Blue backpack with logo"/>
+      </div>
+      <div class="form-group" style="margin-bottom:var(--space-md);">
+        <label class="form-label">Last Seen / Found In Zone</label>
+        <select class="form-select" id="lf-zone">
+          <option value="Z01">North Stand</option>
+          <option value="Z02">South Stand</option>
+          <option value="Z03">East Wing</option>
+          <option value="Z04">West Wing</option>
+          <option value="Z05">VIP Pavilion</option>
+          <option value="Z06">Concourse A</option>
+          <option value="Z07">Concourse B</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:var(--space-lg);">
+        <label class="form-label">📷 Photo (optional)</label>
+        <input type="file" accept="image/*" class="form-input" style="padding:8px;font-size:0.8rem;"/>
+      </div>
+      <div style="display:flex;gap:var(--space-sm);">
+        <button class="btn btn-ghost w-full" onclick="closeModal('lf-modal')">Cancel</button>
+        <button class="btn btn-primary w-full" onclick="submitLF()">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cart modal -->
+  <div class="modal-overlay" id="cart-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">🛒 Your Order</div>
+      <div id="cart-items-list" style="margin-bottom:var(--space-lg);"></div>
+      <div class="divider"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md) 0;">
+        <span style="font-weight:700;color:var(--text-primary);">Total</span>
+        <span style="font-family:var(--font-display);font-size:1.2rem;font-weight:800;color:var(--accent-cyan);" id="cart-modal-total">₹0</span>
+      </div>
+      <div style="background:rgba(41,121,255,0.07);border-radius:var(--radius-md);padding:var(--space-sm) var(--space-md);margin-bottom:var(--space-md);font-size:0.78rem;color:var(--accent-cyan);">
+        🛵 Delivered to seat N12 · Row 8 · Seat 14
+      </div>
+      <div style="display:flex;gap:var(--space-sm);">
+        <button class="btn btn-ghost w-full" onclick="closeModal('cart-modal')">Continue Shopping</button>
+        <button class="btn btn-success w-full" style="font-weight:700;" onclick="placeOrder()">Place Order 🎉</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/data.js"></script>
+  <script src="../js/workflows.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/api.js"></script>
+  <script>
+  /* ── State ── */
+  const cart = {};
+  let currentLFType = 'lost';
+  let currentMenuCat = 'all';
+  const ATTENDEE = VenueDB.attendees[0];
+
+  /* ── Tab switching ── */
+  function switchTab(name) {
+    document.querySelectorAll('.tab-page').forEach(p => p.classList.toggle('active', p.dataset.page === name));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    if (name === 'queue')         renderQueues();
+    if (name === 'order')         renderMenu();
+    if (name === 'help')          renderLF();
+    if (name === 'notifications') renderNotifications();
+    if (name === 'home')          renderHome();
+  }
+
+  /* ── Modal helpers ── */
+  function openModal(id)  { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function openReportModal(){ openModal('report-modal'); }
+  function openLFModal(type){ currentLFType=type; document.getElementById('lf-modal-title').textContent=type==='lost'?'🎒 Report Lost Item':'🔎 Found Something?'; openModal('lf-modal'); }
+  function openCartModal()  { renderCartModal(); openModal('cart-modal'); }
+
+  /* ── Venue map ── */
+  function drawVenueMap() {
+    const canvas = document.getElementById('venue-map');
+    if (!canvas) return;
+    const W = canvas.width  = canvas.offsetWidth;
+    const H = canvas.height = canvas.offsetHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,W,H);
+    /* Oval field */
+    ctx.save();
+    ctx.translate(W/2, H/2);
+    ctx.scale(1, 0.55);
+    const outerR = Math.min(W,H)*0.38;
+    const grad = ctx.createRadialGradient(0,0,outerR*0.3,0,0,outerR);
+    grad.addColorStop(0,'rgba(0,100,30,0.7)');
+    grad.addColorStop(1,'rgba(0,60,10,0.4)');
+    ctx.beginPath(); ctx.arc(0,0,outerR,0,Math.PI*2); ctx.fillStyle=grad; ctx.fill();
+    ctx.beginPath(); ctx.arc(0,0,outerR,0,Math.PI*2); ctx.strokeStyle='rgba(0,200,80,0.3)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.restore();
+    /* Zone labels */
+    const zonePts=[{lbl:'N',x:W/2,y:H*0.07,z:'Z01'},{lbl:'S',x:W/2,y:H*0.93,z:'Z02'},{lbl:'E',x:W*0.9,y:H/2,z:'Z03'},{lbl:'W',x:W*0.1,y:H/2,z:'Z04'}];
+    zonePts.forEach(pt=>{
+      const zone=VenueDB.zones.find(z=>z.zone_id===pt.z);
+      const pct=VenueDB.occupancyPct(zone);
+      const col=pct>=96?'#ff1744':pct>=85?'#ffab00':'#2979ff';
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,16,0,Math.PI*2); ctx.fillStyle=col+'44'; ctx.fill();
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,16,0,Math.PI*2); ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke();
+      ctx.fillStyle='#e8eaf6'; ctx.font='bold 11px Inter'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(pt.lbl,pt.x,pt.y);
+    });
+    /* You are here */
+    ctx.beginPath(); ctx.arc(W/2-30,H*0.18,8,0,Math.PI*2); ctx.fillStyle='#00e5ff'; ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='bold 9px Inter'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('★',W/2-30,H*0.18);
+    ctx.fillStyle='rgba(0,229,255,0.12)'; ctx.beginPath(); ctx.arc(W/2-30,H*0.18,18,0,Math.PI*2); ctx.fill();
+  }
+
+  /* ── Home ── */
+  function renderHome() {
+    drawVenueMap();
+    const zones = VenueDB.zones;
+    const container = document.getElementById('home-zones');
+    if (!container) return;
+    container.innerHTML = zones.map(z => {
+      const pct = VenueDB.occupancyPct(z);
+      return `<div class="queue-card">
+        <div class="queue-emoji">${z.status==='critical'?'🔴':z.status==='alert'?'🟡':'🟢'}</div>
+        <div class="queue-info">
+          <div class="queue-name">${z.zone_name}</div>
+          <div class="queue-loc">${z.current_occupancy.toLocaleString()} / ${z.capacity.toLocaleString()} people</div>
+          <div class="queue-bar-wrap"><div class="progress-bar" style="margin-top:4px"><div class="progress-fill ${occupancyClass(pct)}" style="width:${pct}%"></div></div></div>
+        </div>
+        <div class="queue-wait"><div class="min" style="font-size:1rem;color:${pct>=96?'#ff1744':pct>=85?'#ffab00':'#00e676'}">${pct}%</div><span class="unit">${statusBadge(z.status).replace(/<[^>]+>/g,'').trim()}</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Queues ── */
+  function renderQueues() {
+    const qEl = document.getElementById('queue-list');
+    if (!qEl) return;
+    const fEmoji = {food:'🍔',restroom:'🚻',merch:'👕'};
+    qEl.innerHTML = VenueDB.queues.map(q => {
+      const w = q.estimated_wait_min;
+      const col = w<=4?'var(--accent-green)':w<=10?'var(--accent-amber)':'var(--accent-red)';
+      const pct = Math.min(100, (q.current_length/40)*100);
+      return `<div class="queue-card">
+        <div class="queue-emoji">${fEmoji[q.facility_type]||'📍'}</div>
+        <div class="queue-info">
+          <div class="queue-name">${q.location_name}</div>
+          <div class="queue-loc">${q.current_length} people in queue · Updated ${relTime(q.last_updated)}</div>
+          <div class="queue-bar-wrap"><div class="progress-bar" style="margin-top:4px"><div class="progress-fill ${occupancyClass(pct)}" style="width:${pct}%"></div></div></div>
+        </div>
+        <div class="queue-wait"><div class="min" style="color:${col}">${w}</div><span class="unit">min wait</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Menu ── */
+  function renderMenu() {
+    const activeOrder = VenueDB.orders.find(o=>o.attendee_id===ATTENDEE.attendee_id&&o.status!=='delivered');
+    const wrap = document.getElementById('order-tracker-wrap');
+    if (activeOrder && wrap) {
+      const steps=['placed','preparing','ready','delivered'];
+      const cur=steps.indexOf(activeOrder.status);
+      const stepLabels=['Placed','Preparing','Ready','Delivered'];
+      const stepEmojis=['📝','👨‍🍳','✅','🛵'];
+      wrap.innerHTML=`<div class="order-tracker" style="margin-bottom:var(--space-md);">
+        <div class="tracker-header"><span style="font-size:0.85rem;font-weight:700;color:var(--text-primary)">📦 Order ${activeOrder.order_id}</span>${statusBadge(activeOrder.status)}</div>
+        <div class="tracker-steps">${stepLabels.map((l,i)=>`<div class="step ${i<cur?'done':i===cur?'active':''}"><div class="step-dot">${i<cur?'✓':stepEmojis[i]}</div><div class="step-lbl">${l}</div></div>`).join('')}</div>
+      </div>`;
+    } else if (wrap) { wrap.innerHTML=''; }
+
+    document.querySelectorAll('.cat-chip').forEach(c=>{
+      c.classList.toggle('active', c.dataset.cat===currentMenuCat);
+      c.onclick=()=>{ currentMenuCat=c.dataset.cat; renderMenu(); };
+    });
+
+    const items = currentMenuCat==='all'?VenueDB.menuItems:VenueDB.menuItems.filter(m=>m.category===currentMenuCat);
+    document.getElementById('menu-list').innerHTML = items.map(item=>`
+      <div class="menu-item-card ${item.available?'':'unavail'}">
+        <span class="menu-emoji">${item.emoji}</span>
+        <div class="menu-info">
+          <div class="menu-name">${item.name}</div>
+          <div class="menu-desc">${item.description} · ${item.prep_min>0?`~${item.prep_min} min prep`:'Ready instantly'}</div>
+          <div class="menu-price">${formatCurrency(item.price)}</div>
+        </div>
+        <button class="add-btn" ${!item.available?'disabled':''} onclick="addToCart('${item.item_id}')" title="${item.available?'Add to cart':'Unavailable'}">${cart[item.item_id]?('+'+cart[item.item_id]):'+'}</button>
+      </div>`).join('');
+    updateCartUI();
+  }
+
+  function addToCart(id) {
+    cart[id] = (cart[id]||0)+1;
+    updateCartUI();
+    renderMenu();
+    showToast('🛒 Added to cart', VenueDB.menuItems.find(m=>m.item_id===id)?.name||'Item', 'success', 1500);
+  }
+
+  function updateCartUI() {
+    const count = Object.values(cart).reduce((s,v)=>s+v,0);
+    const total = Object.entries(cart).reduce((s,[id,qty])=>{const it=VenueDB.menuItems.find(m=>m.item_id===id);return s+(it?it.price*qty:0);},0);
+    const strip = document.getElementById('cart-strip');
+    const cc = document.getElementById('cart-items-count');
+    if (count>0) {
+      strip?.classList.remove('hidden');
+      if(cc) { cc.classList.remove('hidden'); cc.textContent=count; }
+      const sc=document.getElementById('cart-summary-count'); if(sc) sc.textContent=`${count} item${count>1?'s':''}`;
+      const st=document.getElementById('cart-summary-total'); if(st) st.textContent=formatCurrency(total);
+    } else {
+      strip?.classList.add('hidden');
+      cc?.classList.add('hidden');
+    }
+  }
+
+  function renderCartModal() {
+    const items = Object.entries(cart).map(([id,qty])=>{const it=VenueDB.menuItems.find(m=>m.item_id===id);return it?{...it,qty}:null}).filter(Boolean);
+    const total = items.reduce((s,i)=>s+i.price*i.qty,0);
+    document.getElementById('cart-items-list').innerHTML = items.map(i=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-sm) 0;border-bottom:1px solid var(--glass-border);">
+        <div style="display:flex;align-items:center;gap:var(--space-sm);"><span style="font-size:1.4rem">${i.emoji}</span><div><div style="font-size:0.85rem;font-weight:700;color:var(--text-primary)">${i.name}</div><div style="font-size:0.72rem;color:var(--text-muted)">x${i.qty}</div></div></div>
+        <div style="font-weight:700;color:var(--accent-cyan)">${formatCurrency(i.price*i.qty)}</div>
+      </div>`).join('');
+    document.getElementById('cart-modal-total').textContent = formatCurrency(total);
+  }
+
+  function placeOrder() {
+    const items=Object.entries(cart).map(([id,qty])=>{const it=VenueDB.menuItems.find(m=>m.item_id===id);return it?{name:it.name,qty,price:it.price}:null}).filter(Boolean);
+    if(!items.length){showToast('Cart is empty','Add items first','warning');return;}
+    const ord=VenueDB.addOrder(ATTENDEE.attendee_id,items);
+    Object.keys(cart).forEach(k=>delete cart[k]);
+    closeModal('cart-modal');
+    updateCartUI();
+    showToast('🎉 Order Placed!',`Order ${ord.order_id} is being prepared`,'success');
+    switchTab('order');
+  }
+
+  /* ── Help ── */
+  function renderLF() {
+    document.getElementById('lf-list').innerHTML = VenueDB.lostFound.map(lf=>`
+      <div class="lf-card">
+        <div class="lf-top"><div><span style="font-weight:700;color:var(--text-primary);font-size:0.88rem">${lf.item}</span>${lf.type==='found'?'<span class="badge badge-normal" style="margin-left:6px">Found</span>':'<span class="badge badge-alert" style="margin-left:6px">Lost</span>'}</div><span style="font-size:0.7rem;color:var(--text-muted)">${relTime(lf.time)}</span></div>
+        <div style="font-size:0.75rem;color:var(--text-muted)">Zone: ${VenueDB.getZone(lf.zone_id)?.zone_name||lf.zone_id} · ${statusBadge(lf.status)}</div>
+      </div>`).join('');
+  }
+
+  function submitReport() {
+    const type=document.getElementById('report-type').value;
+    VenueDB.addIncident(type,'Z01',ATTENDEE.attendee_id);
+    closeModal('report-modal');
+    showToast('🚨 Report Submitted','Staff has been notified and will respond shortly.','success');
+  }
+
+  function submitLF() {
+    const desc=document.getElementById('lf-desc').value||'Unknown item';
+    const zone=document.getElementById('lf-zone').value;
+    VenueDB.lostFound.unshift({lf_id:`LF${Date.now()}`,type:currentLFType,item:desc,zone_id:zone,reported_by:ATTENDEE.attendee_id,time:new Date(),status:currentLFType==='lost'?'searching':'held',photo:null});
+    closeModal('lf-modal');
+    showToast(currentLFType==='lost'?'🎒 Lost Item Reported':'🔎 Found Item Logged','Our team has been notified','success');
+    renderLF();
+  }
+
+  /* ── Notifications ── */
+  function renderNotifications() {
+    const icons={info:'ℹ️',success:'✅',warning:'⚠️',danger:'🚨'};
+    document.getElementById('notif-list').innerHTML = VenueDB.notifications.map(n=>`
+      <div class="notif-item ${n.read?'':'unread'}">
+        <span class="notif-icon">${icons[n.type]||'🔔'}</span>
+        <div><div class="notif-title">${n.title}</div><div class="notif-body">${n.body}</div><div class="notif-time">${relTime(n.time)}</div></div>
+      </div>`).join('');
+    const unread=VenueDB.notifications.filter(n=>!n.read).length;
+    const bc=document.getElementById('notif-count');
+    if(bc){bc.textContent=unread;bc.style.display=unread?'flex':'none';}
+  }
+
+  function markAllRead() {
+    VenueDB.notifications.forEach(n=>n.read=true);
+    renderNotifications();
+    const bc=document.getElementById('notif-count');
+    if(bc) bc.style.display='none';
+  }
+
+  /* ── Init ── */
+  VenueDB.startSimulation();
+  WorkflowEngine.start();
+  renderHome();
+  renderQueues();
+  renderMenu();
+  renderLF();
+  renderNotifications();
+
+  VenueDB.on('tick', () => {
+    const pg = document.querySelector('.tab-page.active');
+    if (!pg) return;
+    const name = pg.dataset.page;
+    if (name==='home')  renderHome();
+    if (name==='queue') renderQueues();
+    if (name==='order') renderMenu();
+  });
+
+  VenueDB.on('notification:new', () => {
+    renderNotifications();
+    const unread=VenueDB.notifications.filter(n=>!n.read).length;
+    const bc=document.getElementById('notif-count');
+    if(bc){bc.textContent=unread;bc.style.display=unread?'flex':'none';}
+  });
+
+  VenueDB.on('order:update', () => {
+    const pg = document.querySelector('.tab-page.active');
+    if (pg?.dataset.page==='order') renderMenu();
+  });
+
+  /* Moment countdown */
+  let momentSeconds=480;
+  setInterval(()=>{ momentSeconds=Math.max(0,momentSeconds-1); const m=Math.floor(momentSeconds/60), s=momentSeconds%60; const el=document.getElementById('next-moment'); if(el) el.textContent=`Half-time Break — in ${m}:${String(s).padStart(2,'0')}`; },1000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Venue Experience — Antigravity Platform</title>
+  <meta name="description" content="AI-powered real-time venue management platform for large-scale sporting events. Monitor crowds, reduce queues, coordinate staff and delight every attendee."/>
+  <link rel="stylesheet" href="css/main.css"/>
+  <style>
+    /* ── Landing-specific styles ── */
+    .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--space-2xl) var(--space-xl); position: relative; z-index: 1; }
+    .hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: var(--radius-full); background: rgba(41,121,255,0.1); border: 1px solid rgba(41,121,255,0.25); font-size: 0.78rem; font-weight: 700; color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: var(--space-lg); }
+    .hero-title { font-size: clamp(2.8rem, 6vw, 5.5rem); font-weight: 900; line-height: 1.05; background: linear-gradient(135deg, #e8eaf6 0%, #90caf9 40%, #7c4dff 80%, #00e5ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: var(--space-lg); }
+    .hero-subtitle { max-width: 700px; font-size: clamp(1rem, 2vw, 1.2rem); color: var(--text-secondary); margin-bottom: var(--space-2xl); line-height: 1.7; }
+    .hero-stats { display: flex; gap: var(--space-2xl); justify-content: center; flex-wrap: wrap; margin-bottom: var(--space-2xl); }
+    .hero-stat { text-align: center; }
+    .hero-stat .num { font-family: var(--font-display); font-size: 2.2rem; font-weight: 800; color: var(--text-primary); }
+    .hero-stat .lbl { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+    .portals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg); max-width: 1000px; width: 100%; margin: 0 auto var(--space-3xl); }
+    .portal-card { position: relative; padding: var(--space-xl) var(--space-lg); border-radius: var(--radius-xl); border: 1px solid var(--glass-border); background: var(--glass-bg); backdrop-filter: blur(20px); text-align: center; cursor: pointer; transition: all 0.35s cubic-bezier(0.23,1,0.32,1); overflow: hidden; text-decoration: none; display: block; }
+    .portal-card::before { content:''; position:absolute; inset:0; background: var(--portal-grad); opacity: 0.06; transition: opacity 0.35s; }
+    .portal-card:hover { transform: translateY(-8px); box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 40px var(--portal-glow); border-color: var(--portal-color); }
+    .portal-card:hover::before { opacity: 0.12; }
+    .portal-icon { font-size: 3.2rem; margin-bottom: var(--space-md); display: block; filter: drop-shadow(0 0 16px var(--portal-glow)); animation: float 4s ease-in-out infinite; }
+    .portal-card:nth-child(2) .portal-icon { animation-delay: -1.3s; }
+    .portal-card:nth-child(3) .portal-icon { animation-delay: -2.6s; }
+    .portal-title { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: var(--space-sm); }
+    .portal-desc { font-size: 0.83rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: var(--space-lg); }
+    .portal-tag { display: inline-block; padding: 3px 10px; border-radius: var(--radius-full); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(255,255,255,0.06); color: var(--portal-color); border: 1px solid var(--portal-color); }
+    .portal-card.attendee { --portal-color:#00e5ff; --portal-grad:linear-gradient(135deg,#00e5ff,#2979ff); --portal-glow:rgba(0,229,255,0.3); }
+    .portal-card.staff     { --portal-color:#7c4dff; --portal-grad:linear-gradient(135deg,#7c4dff,#2979ff); --portal-glow:rgba(124,77,255,0.3); }
+    .portal-card.command   { --portal-color:#ff6d00; --portal-grad:linear-gradient(135deg,#ff6d00,#ff1744); --portal-glow:rgba(255,109,0,0.3); }
+    .portal-arrow { position: absolute; top: var(--space-md); right: var(--space-md); font-size: 1rem; color: var(--text-muted); transition: all 0.25s; }
+    .portal-card:hover .portal-arrow { color: var(--portal-color); transform: translate(3px,-3px); }
+    .features-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md); max-width: 1100px; width: 100%; margin: 0 auto var(--space-3xl); }
+    .feature-chip { padding: var(--space-md); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: var(--space-sm); transition: background 0.25s; }
+    .feature-chip:hover { background: rgba(41,121,255,0.06); border-color: rgba(41,121,255,0.2); }
+    .feature-chip .fi { font-size: 1.6rem; }
+    .feature-chip .ft { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+    .feature-chip .fd { font-size: 0.74rem; color: var(--text-muted); }
+    .live-bar { display: flex; align-items: center; justify-content: center; gap: var(--space-xl); padding: var(--space-md) var(--space-xl); background: rgba(0,230,118,0.05); border-top: 1px solid rgba(0,230,118,0.15); border-bottom: 1px solid rgba(0,230,118,0.15); flex-wrap: wrap; position: relative; z-index:1; }
+    .live-metric { display: flex; align-items: center; gap: var(--space-sm); font-size: 0.82rem; }
+    .live-metric .mval { font-weight: 700; color: var(--text-primary); font-family: var(--font-display); }
+    .live-metric .mlbl { color: var(--text-muted); }
+    .footer { text-align:center; padding: var(--space-xl); font-size:0.78rem; color: var(--text-muted); position:relative; z-index:1; border-top: 1px solid var(--glass-border); }
+    .footer span { color: var(--accent-blue); }
+    @media(max-width:768px){ .portals-grid{grid-template-columns:1fr;} .features-grid{grid-template-columns:repeat(2,1fr);} .hero-stats{gap:var(--space-lg);} }
+    @media(max-width:480px){ .features-grid{grid-template-columns:1fr;} }
+    /* Particle orbit */
+    .orbit { position:fixed; pointer-events:none; z-index:0; }
+    .orbit-ring { position:absolute; border-radius:50%; border:1px solid rgba(41,121,255,0.08); animation: spin-slow linear infinite; }
+    @keyframes spin-slow { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-mesh"></div>
+  <div id="toast-container"></div>
+
+  <!-- Orbiting rings decoration -->
+  <div class="orbit" style="top:10%;left:5%;width:300px;height:300px;">
+    <div class="orbit-ring" style="inset:-20px;animation-duration:18s;"></div>
+    <div class="orbit-ring" style="inset:-50px;animation-duration:28s;animation-direction:reverse;border-color:rgba(124,77,255,0.06);"></div>
+  </div>
+  <div class="orbit" style="bottom:10%;right:5%;width:200px;height:200px;">
+    <div class="orbit-ring" style="inset:-15px;animation-duration:22s;"></div>
+  </div>
+
+  <!-- Live status bar -->
+  <div class="live-bar">
+    <div class="live-dot">Live System Active</div>
+    <div class="live-metric"><span class="mval" id="lm-zones">8</span><span class="mlbl">Zones monitored</span></div>
+    <div class="live-metric"><span class="mval" id="lm-occupancy">—</span><span class="mlbl">Total occupancy</span></div>
+    <div class="live-metric"><span class="mval" id="lm-incidents">6</span><span class="mlbl">Active incidents</span></div>
+    <div class="live-metric"><span class="mval" id="lm-orders">4</span><span class="mlbl">Live orders</span></div>
+    <div class="live-metric"><span class="mval" id="lm-staff">12</span><span class="mlbl">Staff deployed</span></div>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-eyebrow">🏟️ Built on Antigravity · Real-Time Intelligence Platform</div>
+    <h1 class="hero-title">Smart Venue<br/>Experience</h1>
+    <p class="hero-subtitle">
+      AI-powered crowd intelligence, instant staff coordination and personalised attendee journeys — all managed through Antigravity's real-time workflow engine. Zero congestion. Zero missed moments.
+    </p>
+
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">30%</div><div class="lbl">Entry wait reduced</div></div>
+      <div class="hero-stat"><div class="num">&lt;8min</div><div class="lbl">Incident resolution</div></div>
+      <div class="hero-stat"><div class="num">95%</div><div class="lbl">Order accuracy</div></div>
+      <div class="hero-stat"><div class="num">60s</div><div class="lbl">Data refresh lag</div></div>
+    </div>
+
+    <!-- Portal selector cards -->
+    <div class="portals-grid">
+      <a href="attendee/index.html" class="portal-card attendee">
+        <span class="portal-arrow">↗</span>
+        <span class="portal-icon">📱</span>
+        <div class="portal-title">Attendee Portal</div>
+        <p class="portal-desc">Seat guide, queue times, food ordering, lost &amp; found — your personalised game-day companion.</p>
+        <span class="portal-tag">Public · Mobile-first</span>
+      </a>
+
+      <a href="staff/index.html" class="portal-card staff">
+        <span class="portal-arrow">↗</span>
+        <span class="portal-icon">🦺</span>
+        <div class="portal-title">Staff Operations</div>
+        <p class="portal-desc">Zone status, incident management, zone messaging and queue updates — all in one ops app.</p>
+        <span class="portal-tag">Internal · Role-gated</span>
+      </a>
+
+      <a href="command/index.html" class="portal-card command">
+        <span class="portal-arrow">↗</span>
+        <span class="portal-icon">🖥️</span>
+        <div class="portal-title">Command Center</div>
+        <p class="portal-desc">Live venue heatmap, incident matrix, gate charts, KPIs and real-time escalation tracking.</p>
+        <span class="portal-tag">Supervisor · Dashboard</span>
+      </a>
+    </div>
+
+    <!-- Feature chips -->
+    <div class="features-grid">
+      <div class="feature-chip"><span class="fi">📡</span><span class="ft">IoT Sensor Feeds</span><span class="fd">BLE beacons &amp; density cameras update every 60s</span></div>
+      <div class="feature-chip"><span class="fi">⚡</span><span class="ft">Workflow Automation</span><span class="fd">5 Antigravity workflows fire on real-time triggers</span></div>
+      <div class="feature-chip"><span class="fi">🗺️</span><span class="ft">Venue Wayfinding</span><span class="fd">Mapbox-powered floor maps with dynamic gate pins</span></div>
+      <div class="feature-chip"><span class="fi">🔔</span><span class="ft">Push Notifications</span><span class="fd">Firebase FCM segments by zone, preference &amp; opt-in</span></div>
+      <div class="feature-chip"><span class="fi">🛵</span><span class="ft">Seat Delivery</span><span class="fd">Pre-order food &amp; beverages delivered to your seat</span></div>
+      <div class="feature-chip"><span class="fi">🎟️</span><span class="ft">Ticketing Sync</span><span class="fd">Ticketmaster / Paytm Insider live seat validation</span></div>
+      <div class="feature-chip"><span class="fi">💳</span><span class="ft">Payments</span><span class="fd">Razorpay / Stripe embedded in attendee portal</span></div>
+      <div class="feature-chip"><span class="fi">📊</span><span class="ft">Live Analytics</span><span class="fd">KPI cards with auto-refresh &lt;60s data lag</span></div>
+    </div>
+
+    <!-- Data model summary -->
+    <div style="max-width:900px;width:100%;backdrop-filter:blur(20px);background:rgba(10,17,40,0.5);border:1px solid var(--glass-border);border-radius:var(--radius-xl);padding:var(--space-xl);text-align:left;">
+      <h3 style="margin-bottom:var(--space-md);color:var(--text-primary);">📋 Antigravity Data Tables Active</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--space-sm);">
+        <div class="chip">🏟️ Zones (8 records)</div>
+        <div class="chip">🚪 Gates (10 records)</div>
+        <div class="chip">🍔 Queues (10 records)</div>
+        <div class="chip">🦺 Staff (12 records)</div>
+        <div class="chip">🚨 Incidents (6 records)</div>
+        <div class="chip">🎟️ Attendees (4 records)</div>
+        <div class="chip">📦 Orders (4 records)</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    Built with <span>Antigravity Platform</span> · Smart Venue Experience &copy; 2026 · All workflows active · Data simulated every 6s
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/workflows.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    /* ── Live metric bar updates ── */
+    function updateLiveBar() {
+      const totalOcc = VenueDB.zones.reduce((s,z)=>s+z.current_occupancy,0);
+      const totalCap = VenueDB.zones.reduce((s,z)=>s+z.capacity,0);
+      document.getElementById('lm-occupancy').textContent =
+        `${totalOcc.toLocaleString()} / ${totalCap.toLocaleString()}`;
+      document.getElementById('lm-incidents').textContent =
+        VenueDB.getOpenIncidents().length;
+      document.getElementById('lm-orders').textContent =
+        VenueDB.orders.filter(o=>o.status!=='delivered').length;
+    }
+
+    updateLiveBar();
+    VenueDB.startSimulation();
+    WorkflowEngine.start();
+    VenueDB.on('tick', updateLiveBar);
+
+    /* Welcome toast */
+    setTimeout(() => showToast('🏟️ System Online', 'All 7 Antigravity tables loaded. 5 workflows active.', 'success'), 800);
+    setTimeout(() => showToast('⚠️ Crowd Alert', 'Concourse A is at 96% capacity. Redirecting attendees.', 'warning'), 3500);
+  </script>
+</body>
+</html>
